@@ -11,7 +11,7 @@ function requestSong() {
   return songs[Math.floor(Math.random() * songs.length)];
 }
 
-// ❤️ Like system (simple local storage)
+
 let likedSongs = JSON.parse(localStorage.getItem("likedSongs")) || [];
 
 function likeSong(songName) {
