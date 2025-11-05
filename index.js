@@ -129,7 +129,7 @@ function fetchAndDisplaySong(songName, divID) {
         });
 }
 
-import { requestSong } from "./backend.js";
+import { songs, requestSong } from "./backend.js";
 
 fetchAndDisplaySong(requestSong(), "next");
 fetchAndDisplaySong(requestSong(), "main");
