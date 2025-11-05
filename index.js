@@ -129,35 +129,10 @@ function fetchAndDisplaySong(songName, divID) {
         });
 }
 
-import { requestSong, likesong } from "./backend.js";
+import { requestSong } from "./backend.js";
 
 fetchAndDisplaySong(requestSong(), "next");
 fetchAndDisplaySong(requestSong(), "main");
-
-// Get the like button element
-const likeBtn = document.getElementById("like-btn");
-
-// Track liked songs from localStorage
-let likedSongs = JSON.parse(localStorage.getItem("likedSongs")) || [];
-
-// Update button text and style
-function updateLikeButton(songName) {
-  likedSongs = JSON.parse(localStorage.getItem("likedSongs")) || [];
-  if (likedSongs.includes(songName)) {
-    likeBtn.textContent = "❤️ Liked";
-    likeBtn.classList.add("liked");
-  } else {
-    likeBtn.textContent = "♡ Like";
-    likeBtn.classList.remove("liked");
-  }
-}
-
-// When the button is clicked
-likeBtn.addEventListener("click", () => {
-  likeSong(currentSong); // toggle like/unlike using backend.js
-  updateLikeButton(currentSong);
-});
-
 
 /**
  * If the title overflows its container, apply a marquee scrolling effect.
