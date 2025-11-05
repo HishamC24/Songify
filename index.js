@@ -129,10 +129,31 @@ function fetchAndDisplaySong(songName, divID) {
         });
 }
 
-import { songs, requestSong } from "./backend.js";
+import { songs, requestSong, dislikeSong } from "./backend.js";
 
-fetchAndDisplaySong(requestSong(), "next");
-fetchAndDisplaySong(requestSong(), "main");
+// Start with two songs: main and next
+let currentSong = requestSong();
+let nextSong = requestSong();
+
+fetchAndDisplaySong(currentSong, "main");
+fetchAndDisplaySong(nextSong, "next");
+
+const dislikeBtn = document.getElementById("dislikeBtn");
+dislikeBtn.addEventListener("click", () => {
+  // Dislike the current main song
+  dislikeSong(currentSong);
+
+  // Move next song into main slot
+  currentSong = nextSong;
+
+  // Display it
+  fetchAndDisplaySong(currentSong, "main");
+
+  // Fetch a new next song
+  nextSong = requestSong();
+  fetchAndDisplaySong(nextSong, "next");
+});
+
 
 /**
  * If the title overflows its container, apply a marquee scrolling effect.
