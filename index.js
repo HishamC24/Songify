@@ -219,6 +219,33 @@ pauseBtn.addEventListener("click", () => {
 });
 
 // =========================
+// ===== SEEKBAR CONTROL ====
+// =========================
+
+if (seekbar) {
+    seekbar.addEventListener("input", () => {
+        if (!mainAudio) return;
+        // Update time label live while dragging
+        currentTimeLabel.textContent = formatTime(seekbar.value);
+    });
+
+    seekbar.addEventListener("change", () => {
+        if (!mainAudio) return;
+
+        // Jump to new time when released or tapped
+        mainAudio.currentTime = seekbar.value;
+
+        // Resume playback if paused and user interacted
+        if (mainAudio.paused && mainPreviewUrl) {
+            mainAudio.play();
+            playBtn.style.display = "none";
+            pauseBtn.style.display = "inline";
+        }
+    });
+}
+
+
+// =========================
 // ====== SONG SWITCH ======
 // =========================
 
