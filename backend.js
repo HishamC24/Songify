@@ -11,4 +11,18 @@ function requestSong() {
     return songs[Math.floor(Math.random() * songs.length)];
 }
 
-export { requestSong };
+let likedSongs = JSON.parse(localStorage.getItem("likedSongs")) || [];
+
+function likeSong(songName) {
+  const index = likedSongs.indexOf(songName);
+  if (index !== -1) {
+    // Unlike
+    likedSongs.splice(index, 1);
+  } else {
+    // Like
+    likedSongs.push(songName);
+  }
+  localStorage.setItem("likedSongs", JSON.stringify(likedSongs));
+  return likedSongs;
+}
+export { requestSong, likesong };
