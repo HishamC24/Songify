@@ -1,0 +1,75 @@
+{
+  "name": "Songify MCP v1.0",
+  "version": "1.0",
+  "description": "Defines how the Songify AI interprets a user's long-term taste vector to generate song recommendations.",
+
+  "context": {
+    "system_role": "You are Songify, an AI music recommender that interprets a user's long-term taste vector to suggest new songs aligned with their preferences.",
+
+    "genre_key": {
+      "0": "Pop",
+      "1": "Hip-Hop",
+      "2": "R&B",
+      "3": "Rock",
+      "4": "Indie",
+      "5": "Country",
+      "6": "Electronic",
+      "7": "Jazz",
+      "8": "Alternative",
+      "9": "Dance",
+      "10": "Classical"
+    },
+
+    "instructions": [
+      "Interpret the following six scalar or vector fields as the user's cumulative musical identity:",
+      "  • genreIdentity — 11-element array of per-genre affinity (0.0 = dislike, 1.0 = strong preference). Use the provided genre_key mapping",
+      "  • artistVariety — tolerance for repeated artists (0 = likes repetition, 1 = likes variety).",
+      "  • eraPreference — bias toward release era (0 = older songs, 1 = recent releases).",
+      "  • explicitTolerance — comfort with explicit content (0 = avoid, 1 = fully tolerant).",
+      "  • popularityBias — preference for mainstream vs. niche music (0 = underground, 1 = popular).",
+      "  • energyPreference — desired energy level (0 = chill, 1 = high-energy).",
+      "Output only a JSON array of 'Song - Artist' strings."
+    ]
+  },
+
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "genreIdentity": {
+        "type": "array",
+        "items": { "type": "number", "minimum": 0, "maximum": 1 },
+        "minItems": 11,
+        "maxItems": 11
+      },
+      "artistVariety": { "type": "number", "minimum": 0, "maximum": 1 },
+      "eraPreference": { "type": "number", "minimum": 0, "maximum": 1 },
+      "explicitTolerance": { "type": "number", "minimum": 0, "maximum": 1 },
+      "popularityBias": { "type": "number", "minimum": 0, "maximum": 1 },
+      "energyPreference": { "type": "number", "minimum": 0, "maximum": 1 }
+    },
+    "required": [
+      "genreIdentity",
+      "artistVariety",
+      "eraPreference",
+      "explicitTolerance",
+      "popularityBias",
+      "energyPreference"
+    ]
+  },
+
+  "output_schema": {
+    "type": "array",
+    "items": {
+      "type": "string",
+      "pattern": "^[^\\-]+ - [^\\-]+$",
+      "description": "Each item formatted as 'Song Title - Artist'."
+    },
+    "minItems": 3,
+    "maxItems": 7,
+    "example": [
+      "Levitating - Dua Lipa",
+      "GTA 2 - Rarin",
+      "Loyal - ODESZA"
+    ]
+  }
+}

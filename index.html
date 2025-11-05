@@ -10,7 +10,18 @@
     <meta name="theme-color" content="#ff8000" />
     <meta name="description" content="An app to find songs a user might like." />
     <link rel="stylesheet" href="index.css" />
-    <script async type="module" src="index.js"></script>
+
+
+    
+    <script defer src="index.js"></script>
+
+     <!-- QR code lib (from CDN or local copy in /js/) -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+
+    <!-- Songify taste vector system -->
+    <script type="module" src="./backend/songify_logic.js"></script>
+
+
   </head>
   <body>
     <div class="card" id="next">
@@ -97,6 +108,16 @@
         </svg>
       </div>
     </div>
+
+
+  <!--Added Qr and Json buttons-->
+  <div style="text-align:center; margin-top: 1rem;">
+    <button onclick="songifyVectorTest()">Make Qr</button>
+    <button onclick="exportTasteProfileJSON()">Export JSON</button>
+    <canvas id="qrCanvas"></canvas>
+  </div>
+    
+    
     <script type="module">
       import { squircleObserver } from "https://esm.sh/corner-smoothing";
 
