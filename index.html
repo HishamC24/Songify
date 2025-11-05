@@ -166,29 +166,6 @@
       window.addEventListener("load", window.applySquircles);
     </script>
     <script type="module">
-      const playBtn = document.querySelector("#main .play");
-      const pauseBtn = document.querySelector("#main .pause");
-      const audio = new Audio("your-song-file.mp3");
-
-      pauseBtn.style.display = "none";
-
-      playBtn.addEventListener("click", () => {
-        if (audio.paused) {
-          audio.play();
-          playBtn.style.display = "none";
-          pauseBtn.style.display = "inline";
-        } else {
-          audio.pause();
-          playBtn.style.display = "inline";
-          pauseBtn.style.display = "none";
-        }
-      });
-
-      pauseBtn.addEventListener("click", () => {
-        audio.pause();
-        playBtn.style.display = "inline";
-        pauseBtn.style.display = "none";
-      });
     </script>
     <button id="install-btn">Install App</button>
   </body>
