@@ -1,3 +1,6 @@
+/* =========================================
+  1. FONT FACES
+  ========================================= */
 @font-face {
   font-family: "SF Pro Display";
   src: url("Fonts/SF-Pro-Display-Bold.otf");
@@ -6,13 +9,13 @@
 
 @font-face {
   font-family: "SF Pro Display";
-  src: url("Fonts/SF-Pro-Display-medium.otf");
+  src: url("Fonts/SF-Pro-Display-Medium.otf");
   font-weight: 500;
 }
 
 @font-face {
   font-family: "SF Pro Display";
-  src: url("Fonts/SF-Pro-Display-regular.otf");
+  src: url("Fonts/SF-Pro-Display-Regular.otf");
   font-weight: 300;
 }
 
@@ -34,22 +37,21 @@
   font-weight: 100;
 }
 
+/* =========================================
+ 2. GLOBAL RESET & BASE STYLES
+ ========================================= */
+
 * {
   font-family: "SF Pro Display";
   font-weight: 300;
   color: #000;
-  /* line-height: 11px; */
-  padding: 0px;
-  margin: 0px;
+  padding: 0;
+  margin: 0;
   user-select: none;
   -webkit-user-select: none;
   -ms-user-select: none;
   -moz-user-select: none;
 }
-
-/* html {
-  font-size: 16px;
-} */
 
 body {
   background-color: black;
@@ -57,10 +59,13 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin: 2rem 0rem;
+  margin: 2rem 0;
   gap: 2rem;
 }
 
+/* =========================================
+ 3. LAYOUT STRUCTURE
+ ========================================= */
 #cards {
   position: relative;
   display: flex;
@@ -68,16 +73,19 @@ body {
   align-items: center;
 }
 
+/* =========================================
+ 4. CARD STYLES
+ ========================================= */
 .card {
   background-color: rgba(255, 255, 255, 0.33);
   width: calc(100vw - 8rem);
   padding: 2rem;
-  height: fit-content;
+  border-radius: 4rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  border-radius: 4rem;
+  height: fit-content;
   backdrop-filter: blur(0.5rem);
   -webkit-backdrop-filter: blur(0.5rem);
   transition: all 0.2s ease-in-out;
@@ -90,8 +98,8 @@ body {
 
 #next.card {
   position: absolute;
-  scale: 0.9;
   top: -3rem;
+  scale: 0.9;
   z-index: 1;
 }
 
@@ -100,16 +108,16 @@ body {
 }
 
 .card > img {
-  border-radius: 2rem;
-  object-fit: cover;
   width: calc(100vw - 8rem);
-  /* height: auto; */
   aspect-ratio: 1 / 1;
-  /* max-width: 100%;
-  max-height: 100%; */
+  object-fit: cover;
+  border-radius: 2rem;
   margin-bottom: 1.5rem;
 }
 
+/* =========================================
+ 5. TYPOGRAPHY
+ ========================================= */
 .title {
   font-size: 2rem;
   font-weight: 900;
@@ -120,29 +128,20 @@ body {
 .artist {
   font-size: 1.5rem;
   font-weight: 300;
+  color: #333;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #333;
 }
 
-.seekbar {
-  /* FIX COLOR */
-  accent-color: #000000;
-  background: transparent;
-  width: -webkit-fill-available;
+.details {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
-.seekbarLabels {
-  display: flex;
-  justify-content: space-between;
-}
-
-.seekbarLabels > span {
-  font-family: "SF Pro Mono";
-  font-size: 1rem;
-}
-
+/* =========================================
+ 6. PLAYER CONTROLS
+ ========================================= */
 .playerContainer {
   display: flex;
   justify-content: center;
@@ -158,130 +157,110 @@ body {
   display: block;
 }
 
-.details {
-  font-size: 1.5rem;
-  margin-bottom: 1.5rem;
+.seekbar {
+  accent-color: #000;
+  background: transparent;
+  width: -webkit-fill-available;
 }
 
-/* Marquee scrolling for long titles */
-.marquee {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
+.seekbarLabels {
+  display: flex;
+  justify-content: space-between;
 }
 
-.marquee__inner {
-  display: inline-flex;
-  align-items: center;
-  gap: 4rem; /* space between repeats */
-  will-change: transform;
-  animation: marquee-scroll 12s linear infinite;
+.seekbarLabels > span {
+  font-family: "SF Pro Mono";
+  font-size: 1rem;
 }
 
-.marquee__inner > span {
-  white-space: nowrap;
-  /* ensure font matches title */
-  font-size: 2rem;
-  font-weight: 900;
-  font-family: "SF Pro Display";
-}
-
-@keyframes marquee-scroll {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(calc(-1 * var(--marquee-distance, 0px)));
-  }
-}
-
+/* Volume Controls */
 .volumeContainer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0px 0.75rem;
-}
-
-.volume {
-  /* FIX COLOR */
-  accent-color: #000000;
-  background: transparent;
-  width: -webkit-fill-available;
-  margin: 0px 0.25rem;
+  padding: 0 0.75rem;
 }
 
 .volumeContainer > svg {
   width: 1.5rem;
-  stroke: #000000;
+  stroke: #000;
 }
 
-#install-btn {
-  padding: 0.5rem 0.75rem;
-  border-radius: 1rem;
-  background-color: #333333;
-  color: #ffffff;
-  display: none;
-  margin-left: auto;
-  margin-right: auto;
-  margin-top: 0.5rem;
-  margin-bottom: 0;
-  position: relative;
-  top: 0;
-  border: none;
+.volume {
+  accent-color: #000;
+  background: transparent;
+  width: -webkit-fill-available;
+  margin: 0 0.25rem;
 }
 
+/* =========================================
+ 7. RANGE SLIDER STYLES
+ ========================================= */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
   height: 0.25rem;
-  background: #cccccc; /* unfilled track */
+  background: #ccc;
   border-radius: 0.125rem;
   outline: none;
-  overflow: hidden; /* ensures white fill stays within track */
+  overflow: hidden;
 }
 
-/* WebKit browsers (Chrome, Safari, Edge) */
+/* WebKit (Chrome, Safari, Edge) */
 input[type="range"]::-webkit-slider-runnable-track {
   height: 0.25rem;
-  background: #cccccc;
+  background: #ccc;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 0.25rem;
   height: 0.25rem;
-  background: #000000;
+  background: #000;
   border-radius: 50%;
-  box-shadow: -100vw 0 0 100vw #000000; /* creates the filled progress */
+  box-shadow: -100vw 0 0 100vw #000; /* filled progress */
   cursor: pointer;
 }
 
 /* Firefox */
 input[type="range"]::-moz-range-track {
   height: 0.25rem;
-  background: #333333;
+  background: #333;
 }
 
 input[type="range"]::-moz-range-progress {
   height: 0.25rem;
-  background: #000000;
+  background: #000;
 }
 
 input[type="range"]::-moz-range-thumb {
   width: 0.25rem;
   height: 0.25rem;
-  background: #000000;
+  background: #000;
   border: none;
   border-radius: 50%;
   cursor: pointer;
 }
 
-/*Like button styling*/
+/* =========================================
+ 8. BUTTONS
+ ========================================= */
+/* Install Button */
+#install-btn {
+  display: none;
+  position: relative;
+  margin: 0.5rem auto 0;
+  top: 0;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 1rem;
+  background-color: #333;
+  color: #fff;
+}
+
+/* Like Button */
 #like-btn {
-  /* position: fixed;
-  bottom: 2rem;
-  left: 2rem; */
   background-color: rgba(255, 255, 255, 0.33);
   color: #000;
   border: none;
@@ -306,40 +285,29 @@ input[type="range"]::-moz-range-thumb {
   color: #fff;
 }
 
-/* Old Edge / IE */
-input[type="range"]::-ms-track {
-  height: 0.25rem;
-  background: transparent;
-  border-color: transparent;
-  color: transparent;
-}
-input[type="range"]::-ms-fill-lower {
-  background: #000000;
-}
-input[type="range"]::-ms-fill-upper {
-  background: #333333;
-}
-input[type="range"]::-ms-thumb {
-  width: 0.25rem;
-  height: 0.25rem;
-  background: #000000;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
+/* Bottom Buttons (Like / Dislike Pair) */
 .bottom-btns {
   width: calc(100vw - 4rem);
   display: flex;
   align-items: center;
-  flex-direction: row;
-  align-content: center;
   justify-content: space-between;
   gap: 2rem;
-  /* position: fixed;
-  left: 2rem;
-  bottom: 2rem; */
 }
 
+.dislike-btn,
+.like-btn {
+  width: 50%;
+  border-radius: 4rem;
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  backdrop-filter: blur(0.5rem);
+  -webkit-backdrop-filter: blur(0.5rem);
+  transition: all 0.25s ease-in-out;
+}
+
+/* Dislike */
 .dislike-btn {
   background-color: rgba(255, 85, 85, 0.5);
 }
@@ -348,6 +316,7 @@ input[type="range"]::-ms-thumb {
   background-color: rgba(255, 85, 85, 0.75);
 }
 
+/* Like */
 .like-btn {
   background-color: rgba(85, 255, 85, 0.5);
 }
@@ -356,20 +325,7 @@ input[type="range"]::-ms-thumb {
   background-color: rgba(85, 255, 85, 0.75);
 }
 
-.dislike-btn,
-.like-btn {
-  backdrop-filter: blur(0.5rem);
-  -webkit-backdrop-filter: blur(0.5rem);
-  width: 50%;
-  border-radius: 4rem;
-  padding: 1.5rem 2rem;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  transition: all 0.25s ease-in-out;
-}
-
+/* Icons & Text inside bottom buttons */
 .dislike-btn > svg,
 .like-btn > svg {
   width: 2rem;
@@ -379,4 +335,63 @@ input[type="range"]::-ms-thumb {
 .like-btn > p {
   font-size: 1.5rem;
   font-weight: 500;
+}
+
+/* =========================================
+ 9. MARQUEE ANIMATION
+ ========================================= */
+.marquee {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.marquee__inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4rem;
+  will-change: transform;
+  animation: marquee-scroll 12s linear infinite;
+}
+
+.marquee__inner > span {
+  white-space: nowrap;
+  font-size: 2rem;
+  font-weight: 900;
+  font-family: "SF Pro Display";
+}
+
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(calc(-1 * var(--marquee-distance, 0px)));
+  }
+}
+
+/* =========================================
+ 10. BROWSER-SPECIFIC FIXES (Old Edge / IE)
+ ========================================= */
+input[type="range"]::-ms-track {
+  height: 0.25rem;
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+}
+
+input[type="range"]::-ms-fill-lower {
+  background: #000;
+}
+
+input[type="range"]::-ms-fill-upper {
+  background: #333;
+}
+
+input[type="range"]::-ms-thumb {
+  width: 0.25rem;
+  height: 0.25rem;
+  background: #000;
+  border-radius: 50%;
+  cursor: pointer;
 }

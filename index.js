@@ -1,283 +1,138 @@
-
 // =========================
 // ===== PWA INSTALL =======
 // =========================
+
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js");
 }
 
-let deferredPrompt = null;
 const installBtn = document.getElementById("install-btn");
+let deferredPrompt = null;
 
-// Hide button if already installed or running as PWA
-function checkInstallState() {
-    // Check if running in standalone mode (already installed as PWA)
-    if (window.matchMedia("(display-mode: standalone)").matches ||
-        window.navigator.standalone === true ||
-        document.referrer.includes("android-app://")) {
-        installBtn.style.display = "none";
-    }
+function hideInstallButton() {
+    installBtn.style.display = "none";
 }
 
-// Check on page load
+function showInstallButton() {
+    installBtn.style.display = "";
+}
+
+function checkInstallState() {
+    const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        navigator.standalone === true ||
+        document.referrer.includes("android-app://");
+
+    if (isStandalone) hideInstallButton();
+}
+
+// Initial check
 checkInstallState();
 
 window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    installBtn.style.display = "";
+    showInstallButton();
 });
 
 installBtn.addEventListener("click", async () => {
     if (!deferredPrompt) return;
-    installBtn.style.display = "none";
+    hideInstallButton();
+
     deferredPrompt.prompt();
     await deferredPrompt.userChoice;
     deferredPrompt = null;
 });
 
 window.addEventListener("appinstalled", () => {
-    installBtn.style.display = "none";
+    hideInstallButton();
     deferredPrompt = null;
 });
 
-/**
- * Fetches song data for the given songName and populates UI elements inside the specified divID.
- * Also sets up audio preview if divID is "main".
- * 
- * @param {string} songName - The name of the song to search for.
- * @param {string} divID - The ID of the container div where the song info should be placed.
- */
-let mainAudio = null;
-let mainPreviewUrl = null;
-
-function fetchAndDisplaySong(songName, divID) {
-    const searchQuery =
-        "https://itunes.apple.com/search?term=" + encodeURIComponent(songName);
-
-    let searchResult;
-
-    fetch(searchQuery)
-        .then((response) => response.json())
-        .then((json) => {
-            if (json && Array.isArray(json.results)) {
-                json.results = json.results.filter((item) => item.kind === "song");
-            }
-
-            searchResult = json;
-            console.log(searchResult);
-
-            if (searchResult.results && searchResult.results.length > 0) {
-                const first = searchResult.results[0];
-                // const artworkUrl = first.artworkUrl100.replace("100x100", "5000x5000");
-                const cardDiv = document.getElementById(divID);
-                if (!cardDiv) {
-                    console.warn("No such div ID:", divID);
-                    return;
-                }
-
-                // Set .card > img (first img in this container)
-                const mainImg = cardDiv.querySelector("img");
-                if (mainImg) {
-                    mainImg.src = first.artworkUrl100.replace("100x100", "5000x5000");
-                    mainImg.alt = first.trackName + " by " + first.artistName;
-                }
-
-                // Title and artist in this card only
-                const titleElem = cardDiv.querySelector(".title");
-                const artistElem = cardDiv.querySelector(".artist");
-                if (titleElem) {
-                    titleElem.textContent = first.trackName;
-                    applyTitleMarqueeIfNeeded(titleElem);
-                }
-                if (artistElem) {
-                    artistElem.textContent = first.artistName;
-                }
-
-                // Explicit marker in this card
-                const explicitDiv = cardDiv.querySelector(".explicitcy");
-                if (explicitDiv) {
-                    // Remove any previous explicit marker
-                    explicitDiv.querySelectorAll(".explicit-marker").forEach(el => el.remove());
-                    if (first.trackExplicitness && first.trackExplicitness === "explicit") {
-                        const boldE = document.createElement("b");
-                        boldE.className = "explicit-marker";
-                        boldE.textContent = "E";
-                        explicitDiv.insertBefore(boldE, explicitDiv.firstChild);
-                    }
-                }
-
-                // Details update (genre/release info) in this card
-                const detailsElem = cardDiv.querySelector(".details");
-                if (detailsElem) {
-                    let genre = first.primaryGenreName || "";
-                    let releaseDateStr = "";
-                    if (first.releaseDate) {
-                        const dateObj = new Date(first.releaseDate);
-                        const month = dateObj.toLocaleString("en-US", { month: "long" });
-                        const day = dateObj.getDate();
-                        const year = dateObj.getFullYear();
-                        releaseDateStr = `${month} ${day}, ${year}`;
-                    }
-                    detailsElem.innerHTML = `
-                        Genre: ${genre}<br>
-                        Release: ${releaseDateStr}
-                    `;
-                }
-
-                // If setting main card, also set up audio preview
-                if (divID === "main") {
-                    mainPreviewUrl = first.previewUrl || null;
-                    if (mainAudio) {
-                        mainAudio.pause();
-                    }
-                    if (mainPreviewUrl) {
-                        mainAudio = new Audio(mainPreviewUrl);
-                        setupAudioProgressTracking(mainAudio);
-                        setupAudioEndedHandler(mainAudio);
-                    } else {
-                        mainAudio = null;
-                    }
-                    // Always reset UI to play button ready state
-                    if (playBtn && pauseBtn) {
-                        playBtn.style.display = "";
-                        pauseBtn.style.display = "none";
-                    }
-                    // Reset slider and time labels
-                    if (seekbar) {
-                        seekbar.value = 0;
-                        seekbar.max = 30; // Reset to default
-                    }
-                    if (currentTimeLabel) {
-                        currentTimeLabel.textContent = "00:00";
-                    }
-                    if (durationLabel) {
-                        durationLabel.textContent = "00:30";
-                    }
-                }
-            } else {
-                console.warn("No song results found.");
-                // If main card and no result, clear audio for safety.
-                if (divID === "main") {
-                    if (mainAudio) mainAudio.pause();
-                    mainAudio = null;
-                    mainPreviewUrl = null;
-                    if (playBtn && pauseBtn) {
-                        playBtn.style.display = "";
-                        pauseBtn.style.display = "none";
-                    }
-                    // Reset slider and time labels
-                    if (seekbar) {
-                        seekbar.value = 0;
-                        seekbar.max = 30;
-                    }
-                    if (currentTimeLabel) {
-                        currentTimeLabel.textContent = "00:00";
-                    }
-                    if (durationLabel) {
-                        durationLabel.textContent = "00:30";
-                    }
-                }
-            }
-        })
-        .catch((error) => {
-            console.error("Error fetching data:", error);
-        });
-}
+// =========================
+// ===== SONG FETCHING =====
+// =========================
 
 import { songs, requestSong, dislikeSong } from "./backend.js";
 
-// Start with two songs: main and next
-let currentSong = requestSong();
-let nextSong = requestSong();
+let mainAudio = null;
+let mainPreviewUrl = null;
 
-fetchAndDisplaySong(currentSong, "main");
-fetchAndDisplaySong(nextSong, "next");
-
-const dislikeBtn = document.getElementById("dislikeBtn");
-dislikeBtn.addEventListener("click", () => {
-    // Dislike the current main song
-    dislikeSong(currentSong);
-
-    // Move next song into main slot
-    currentSong = nextSong;
-
-    // Display it
-    fetchAndDisplaySong(currentSong, "main");
-
-    // Fetch a new next song
-    nextSong = requestSong();
-    fetchAndDisplaySong(nextSong, "next");
-});
-
-
-/**
- * If the title overflows its container, apply a marquee scrolling effect.
- */
-function applyTitleMarqueeIfNeeded(titleElement) {
-    // Ensure layout is computed before measuring
-    requestAnimationFrame(() => {
-        const needsScroll = titleElement.scrollWidth > titleElement.clientWidth + 2;
-        if (!needsScroll) return;
-
-        const titleText = titleElement.textContent || "";
-
-        // Build marquee structure
-        const wrapper = document.createElement("div");
-        wrapper.className = "marquee";
-        const inner = document.createElement("div");
-        inner.className = "marquee__inner";
-
-        const span1 = document.createElement("span");
-        span1.textContent = titleText;
-        const span2 = document.createElement("span");
-        span2.textContent = titleText;
-        span2.setAttribute("aria-hidden", "true");
-
-        inner.appendChild(span1);
-        inner.appendChild(span2);
-        wrapper.appendChild(inner);
-
-        // Replace original content
-        titleElement.textContent = "";
-        titleElement.appendChild(wrapper);
-
-        // Adjust animation speed relative to text length for readability
-        const baseDurationSeconds = 9;
-        const lengthFactor = Math.min(Math.max(titleText.length / 20, 0.7), 2.5);
-        inner.style.animationDuration = `${baseDurationSeconds * lengthFactor}s`;
-
-        // Compute exact scroll distance (width of one copy + gap)
-        const computeAndSetDistance = () => {
-            const styles = getComputedStyle(inner);
-            const gapPx = parseFloat(styles.columnGap || styles.gap || "0") || 0;
-            const distance = Math.ceil(span1.offsetWidth + gapPx);
-            inner.style.setProperty("--marquee-distance", `${distance}px`);
-
-            // Restart animation to avoid visual jumps on dimension change
-            const currentAnimation = inner.style.animation;
-            inner.style.animation = "none";
-            // Force reflow
-            // eslint-disable-next-line no-unused-expressions
-            inner.offsetHeight;
-            inner.style.animation = currentAnimation || "";
-        };
-
-        computeAndSetDistance();
-
-        // Recompute on resize/orientation changes
-        const onResize = () => computeAndSetDistance();
-        window.addEventListener("resize", onResize);
-        window.addEventListener("orientationchange", onResize);
-
-        // Store cleanup on element for potential future use
-        titleElement._cleanupMarquee = () => {
-            window.removeEventListener("resize", onResize);
-            window.removeEventListener("orientationchange", onResize);
-        };
+const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
     });
+};
+
+async function fetchAndDisplaySong(songName, divID) {
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(songName)}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        const results = (data.results || []).filter((item) => item.kind === "song");
+        if (!results.length) return handleNoSong(divID);
+
+        const song = results[0];
+        const card = document.getElementById(divID);
+        if (!card) return console.warn("No such div ID:", divID);
+
+        const img = card.querySelector("img");
+        const titleElem = card.querySelector(".title");
+        const artistElem = card.querySelector(".artist");
+        const explicitElem = card.querySelector(".explicitcy");
+        const detailsElem = card.querySelector(".details");
+
+        // Update image
+        if (img) {
+            img.src = song.artworkUrl100.replace("100x100", "5000x5000");
+            img.alt = `${song.trackName} by ${song.artistName}`;
+        }
+
+        // Title and artist
+        if (titleElem) {
+            titleElem.textContent = song.trackName;
+            applyTitleMarqueeIfNeeded(titleElem);
+        }
+        if (artistElem) artistElem.textContent = song.artistName;
+
+        // Explicit label
+        if (explicitElem) {
+            explicitElem.querySelectorAll(".explicit-marker").forEach((el) => el.remove());
+            if (song.trackExplicitness === "explicit") {
+                const marker = document.createElement("b");
+                marker.className = "explicit-marker";
+                marker.textContent = "E";
+                explicitElem.prepend(marker);
+            }
+        }
+
+        // Genre + release
+        if (detailsElem) {
+            detailsElem.innerHTML = `
+          Genre: ${song.primaryGenreName || ""}<br>
+          Release: ${formatDate(song.releaseDate)}
+        `;
+        }
+
+        // Audio setup for main card
+        if (divID === "main") setupMainAudio(song.previewUrl);
+    } catch (err) {
+        console.error("Error fetching data:", err);
+    }
 }
 
+function handleNoSong(divID) {
+    console.warn("No song results found.");
+    if (divID !== "main") return;
+
+    resetAudio();
+}
 
 // =========================
 // ===== AUDIO PLAYER ======
@@ -288,122 +143,183 @@ const pauseBtn = document.querySelector("#main .pause");
 const seekbar = document.querySelector("#main .seekbar");
 const currentTimeLabel = document.querySelector("#main .currentTimeLabel");
 const durationLabel = document.querySelector("#main .durationLabel");
-// Don't create an audio object here;
-// instead, use mainAudio/mainPreviewUrl from fetchAndDisplaySong above
 
 pauseBtn.style.display = "none";
 
-// Helper function to format time as MM:SS
 function formatTime(seconds) {
     if (isNaN(seconds) || seconds < 0) return "00:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-// Function to set up audio progress tracking
-function setupAudioProgressTracking(audio) {
-    if (!audio) return;
+function setupMainAudio(previewUrl) {
+    if (mainAudio) mainAudio.pause();
+    mainPreviewUrl = previewUrl || null;
 
-    // Update duration when metadata is loaded
+    if (!mainPreviewUrl) {
+        mainAudio = null;
+        resetAudio();
+        return;
+    }
+
+    mainAudio = new Audio(mainPreviewUrl);
+    setupAudioProgressTracking(mainAudio);
+    setupAudioEndedHandler(mainAudio);
+    resetAudio();
+}
+
+function resetAudio() {
+    if (mainAudio) mainAudio.pause();
+
+    playBtn.style.display = "";
+    pauseBtn.style.display = "none";
+
+    if (seekbar) {
+        seekbar.value = 0;
+        seekbar.max = 30;
+    }
+    if (currentTimeLabel) currentTimeLabel.textContent = "00:00";
+    if (durationLabel) durationLabel.textContent = "00:30";
+}
+
+function setupAudioProgressTracking(audio) {
     audio.addEventListener("loadedmetadata", () => {
-        const duration = audio.duration;
-        if (seekbar && !isNaN(duration)) {
-            seekbar.max = duration;
-            if (durationLabel) {
-                durationLabel.textContent = formatTime(duration);
-            }
+        if (seekbar && !isNaN(audio.duration)) {
+            seekbar.max = audio.duration;
+            durationLabel.textContent = formatTime(audio.duration);
         }
     });
 
-    // Update slider and time label as audio plays
     audio.addEventListener("timeupdate", () => {
-        if (seekbar && !isNaN(audio.currentTime)) {
+        if (!isNaN(audio.currentTime)) {
             seekbar.value = audio.currentTime;
-        }
-        if (currentTimeLabel && !isNaN(audio.currentTime)) {
             currentTimeLabel.textContent = formatTime(audio.currentTime);
         }
     });
 }
 
+function setupAudioEndedHandler(audio) {
+    audio.addEventListener("ended", resetAudio);
+}
+
 playBtn.addEventListener("click", () => {
-    if (mainAudio && mainPreviewUrl) {
-        // If already playing, do nothing; else, start playback from start
-        // Optionally, you may want to always restart playback on play
-        mainAudio.currentTime = 0;
-        mainAudio.play();
-        playBtn.style.display = "none";
-        pauseBtn.style.display = "inline";
-    }
+    if (!mainAudio || !mainPreviewUrl) return;
+    mainAudio.currentTime = 0;
+    mainAudio.play();
+    playBtn.style.display = "none";
+    pauseBtn.style.display = "inline";
 });
 
 pauseBtn.addEventListener("click", () => {
-    if (mainAudio) {
-        mainAudio.pause();
-        playBtn.style.display = "inline";
-        pauseBtn.style.display = "none";
-    }
+    if (!mainAudio) return;
+    mainAudio.pause();
+    playBtn.style.display = "inline";
+    pauseBtn.style.display = "none";
 });
 
-// When song ends, reset buttons and UI
-function setupAudioEndedHandler(audio) {
-    if (!audio) return;
-    audio.addEventListener("ended", function () {
-        playBtn.style.display = "";
-        pauseBtn.style.display = "none";
-        // Reset slider and time display
-        if (seekbar) {
-            seekbar.value = 0;
-        }
-        if (currentTimeLabel) {
-            currentTimeLabel.textContent = "00:00";
-        }
+// =========================
+// ====== SONG SWITCH ======
+// =========================
+
+let currentSong = requestSong();
+let nextSong = requestSong();
+
+fetchAndDisplaySong(currentSong, "main");
+fetchAndDisplaySong(nextSong, "next");
+
+document.getElementById("dislikeBtn").addEventListener("click", () => {
+    dislikeSong(currentSong);
+    currentSong = nextSong;
+    fetchAndDisplaySong(currentSong, "main");
+
+    nextSong = requestSong();
+    fetchAndDisplaySong(nextSong, "next");
+});
+
+// =========================
+// ===== TITLE MARQUEE =====
+// =========================
+
+function applyTitleMarqueeIfNeeded(el) {
+    requestAnimationFrame(() => {
+        if (el.scrollWidth <= el.clientWidth + 2) return;
+
+        const text = el.textContent;
+        const wrapper = document.createElement("div");
+        wrapper.className = "marquee";
+        const inner = document.createElement("div");
+        inner.className = "marquee__inner";
+
+        [text, text].forEach((t, i) => {
+            const span = document.createElement("span");
+            span.textContent = t;
+            if (i) span.setAttribute("aria-hidden", "true");
+            inner.appendChild(span);
+        });
+
+        wrapper.appendChild(inner);
+        el.textContent = "";
+        el.appendChild(wrapper);
+
+        const baseSpeed = 9;
+        const factor = Math.min(Math.max(text.length / 20, 0.7), 2.5);
+        inner.style.animationDuration = `${baseSpeed * factor}s`;
+
+        const computeDistance = () => {
+            const styles = getComputedStyle(inner);
+            const gap = parseFloat(styles.gap || styles.columnGap || "0") || 0;
+            const distance = Math.ceil(inner.firstChild.offsetWidth + gap);
+            inner.style.setProperty("--marquee-distance", `${distance}px`);
+
+            const anim = inner.style.animation;
+            inner.style.animation = "none";
+            inner.offsetHeight; // force reflow
+            inner.style.animation = anim;
+        };
+
+        computeDistance();
+        window.addEventListener("resize", computeDistance);
+        window.addEventListener("orientationchange", computeDistance);
+
+        el._cleanupMarquee = () => {
+            window.removeEventListener("resize", computeDistance);
+            window.removeEventListener("orientationchange", computeDistance);
+        };
     });
 }
 
-
-
-// iOS drag support for all range sliders
-
-const diagramSliders = document.querySelectorAll('input[type="range"]');
+// ================================
+// ===== iOS RANGE FIX HANDLER ====
+// ================================
 
 function iosRangeTouchHandler(e) {
-    // Only handle single touch
     if (e.touches.length > 1) return;
 
     const input = e.target;
     const rect = input.getBoundingClientRect();
     const touch = e.touches[0] || e.changedTouches[0];
 
-    // Calculate position relative to slider
-    let left = rect.left + window.scrollX;
-    let width = rect.width;
-    let percent = (touch.pageX - left) / width;
+    let percent = (touch.pageX - rect.left - window.scrollX) / rect.width;
     percent = Math.min(Math.max(percent, 0), 1);
 
     const min = parseFloat(input.min || 0);
     const max = parseFloat(input.max || 100);
     const step = parseFloat(input.step || 1);
 
-    // Map percent to value
-    let rawValue = min + percent * (max - min);
-    // Snap to nearest step
-    let steppedValue = Math.round((rawValue - min) / step) * step + min;
-    // Clamp
-    steppedValue = Math.min(Math.max(steppedValue, min), max);
+    let value = min + percent * (max - min);
+    value = Math.round((value - min) / step) * step + min;
+    value = Math.min(Math.max(value, min), max);
 
-    input.value = steppedValue;
-    // Fire input and change events manually for live updates
+    input.value = value;
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
 
-    // Prevent native oddities/cursor stealing
     e.preventDefault();
 }
 
 if (/iPhone|iPad|iPod/.test(navigator.platform)) {
-    diagramSliders.forEach(slider => {
+    document.querySelectorAll('input[type="range"]').forEach((slider) => {
         slider.addEventListener("touchstart", iosRangeTouchHandler, { passive: false });
         slider.addEventListener("touchmove", iosRangeTouchHandler, { passive: false });
     });
