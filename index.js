@@ -51,71 +51,6 @@ window.addEventListener("appinstalled", () => {
 let mainAudio = null;
 let mainPreviewUrl = null;
 
-const mainTimeSlider = document.getElementById('main-time-slider'); // Make sure your HTML includes this input[type="range"]
-
-// Helper function to set up the slider's range and updates for a given audio
-function setupAudioSlider(audioObj, sliderElem) {
-    if (!audioObj || !sliderElem) return;
-
-    // Set slider attributes
-    sliderElem.value = 0;
-    sliderElem.min = 0;
-    sliderElem.max = 30; // Default to iTunes preview max
-    sliderElem.step = 0.01;
-
-    // Set max once metadata loads
-    let setMax = () => {
-        if (!isNaN(audioObj.duration) && audioObj.duration > 0) {
-            sliderElem.max = audioObj.duration;
-        }
-    };
-
-    audioObj.addEventListener('loadedmetadata', setMax);
-
-    // Listen for audio time updates, update slider position
-    audioObj.addEventListener('timeupdate', () => {
-        // Prevent cursor jump if user is dragging the slider
-        if (!sliderElem._dragging) {
-            sliderElem.value = audioObj.currentTime;
-        }
-    });
-
-    // Handle slider input (so user can scrub through the audio)
-    sliderElem.addEventListener('input', function () {
-        // While dragging, update audio position only on 'change'
-        if (sliderElem._dragging) return;
-        audioObj.currentTime = parseFloat(sliderElem.value);
-    });
-
-    // Drag state management (for tap-and-drag seeking)
-    sliderElem.addEventListener('mousedown', () => { sliderElem._dragging = true; });
-    sliderElem.addEventListener('touchstart', () => { sliderElem._dragging = true; });
-    sliderElem.addEventListener('mouseup', function () {
-        if (sliderElem._dragging) {
-            sliderElem._dragging = false;
-            audioObj.currentTime = parseFloat(sliderElem.value);
-        }
-    });
-    sliderElem.addEventListener('touchend', function () {
-        if (sliderElem._dragging) {
-            sliderElem._dragging = false;
-            audioObj.currentTime = parseFloat(sliderElem.value);
-        }
-    });
-}
-
-function cleanupAudioSlider(audioObj, sliderElem) {
-    if (!audioObj || !sliderElem) return;
-    // Remove previous listeners if needed (for repeated audio swaps)
-    audioObj.removeEventListener('loadedmetadata', () => { });
-    audioObj.removeEventListener('timeupdate', () => { });
-    sliderElem.removeEventListener('input', () => { });
-    sliderElem.removeEventListener('mousedown', () => { });
-    sliderElem.removeEventListener('touchstart', () => { });
-    sliderElem.removeEventListener('mouseup', () => { });
-    sliderElem.removeEventListener('touchend', () => { });
-}
-
 function fetchAndDisplaySong(songName, divID) {
     const searchQuery =
         "https://itunes.apple.com/search?term=" + encodeURIComponent(songName);
@@ -195,29 +130,29 @@ function fetchAndDisplaySong(songName, divID) {
                     mainPreviewUrl = first.previewUrl || null;
                     if (mainAudio) {
                         mainAudio.pause();
-                        cleanupAudioSlider(mainAudio, mainTimeSlider);
                     }
                     if (mainPreviewUrl) {
                         mainAudio = new Audio(mainPreviewUrl);
-
-                        // Setup slider for playback
-                        if (mainTimeSlider) {
-                            setupAudioSlider(mainAudio, mainTimeSlider);
-                        }
+                        setupAudioProgressTracking(mainAudio);
+                        setupAudioEndedHandler(mainAudio);
                     } else {
                         mainAudio = null;
-                        if (mainTimeSlider) {
-                            mainTimeSlider.value = 0;
-                        }
                     }
                     // Always reset UI to play button ready state
                     if (playBtn && pauseBtn) {
                         playBtn.style.display = "";
                         pauseBtn.style.display = "none";
                     }
-                    // Reset time slider UI for new track
-                    if (mainTimeSlider) {
-                        mainTimeSlider.value = 0;
+                    // Reset slider and time labels
+                    if (seekbar) {
+                        seekbar.value = 0;
+                        seekbar.max = 30; // Reset to default
+                    }
+                    if (currentTimeLabel) {
+                        currentTimeLabel.textContent = "00:00";
+                    }
+                    if (durationLabel) {
+                        durationLabel.textContent = "00:30";
                     }
                 }
             } else {
@@ -227,12 +162,20 @@ function fetchAndDisplaySong(songName, divID) {
                     if (mainAudio) mainAudio.pause();
                     mainAudio = null;
                     mainPreviewUrl = null;
-                    if (mainTimeSlider) {
-                        mainTimeSlider.value = 0;
-                    }
                     if (playBtn && pauseBtn) {
                         playBtn.style.display = "";
                         pauseBtn.style.display = "none";
+                    }
+                    // Reset slider and time labels
+                    if (seekbar) {
+                        seekbar.value = 0;
+                        seekbar.max = 30;
+                    }
+                    if (currentTimeLabel) {
+                        currentTimeLabel.textContent = "00:00";
+                    }
+                    if (durationLabel) {
+                        durationLabel.textContent = "00:30";
                     }
                 }
             }
@@ -342,10 +285,47 @@ function applyTitleMarqueeIfNeeded(titleElement) {
 
 const playBtn = document.querySelector("#main .play");
 const pauseBtn = document.querySelector("#main .pause");
+const seekbar = document.querySelector("#main .seekbar");
+const currentTimeLabel = document.querySelector("#main .currentTimeLabel");
+const durationLabel = document.querySelector("#main .durationLabel");
 // Don't create an audio object here;
 // instead, use mainAudio/mainPreviewUrl from fetchAndDisplaySong above
 
 pauseBtn.style.display = "none";
+
+// Helper function to format time as MM:SS
+function formatTime(seconds) {
+    if (isNaN(seconds) || seconds < 0) return "00:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
+// Function to set up audio progress tracking
+function setupAudioProgressTracking(audio) {
+    if (!audio) return;
+
+    // Update duration when metadata is loaded
+    audio.addEventListener("loadedmetadata", () => {
+        const duration = audio.duration;
+        if (seekbar && !isNaN(duration)) {
+            seekbar.max = duration;
+            if (durationLabel) {
+                durationLabel.textContent = formatTime(duration);
+            }
+        }
+    });
+
+    // Update slider and time label as audio plays
+    audio.addEventListener("timeupdate", () => {
+        if (seekbar && !isNaN(audio.currentTime)) {
+            seekbar.value = audio.currentTime;
+        }
+        if (currentTimeLabel && !isNaN(audio.currentTime)) {
+            currentTimeLabel.textContent = formatTime(audio.currentTime);
+        }
+    });
+}
 
 playBtn.addEventListener("click", () => {
     if (mainAudio && mainPreviewUrl) {
@@ -355,10 +335,6 @@ playBtn.addEventListener("click", () => {
         mainAudio.play();
         playBtn.style.display = "none";
         pauseBtn.style.display = "inline";
-    }
-    // Sync slider with current position
-    if (mainAudio && mainTimeSlider) {
-        mainTimeSlider.value = mainAudio.currentTime;
     }
 });
 
@@ -370,18 +346,20 @@ pauseBtn.addEventListener("click", () => {
     }
 });
 
-// When song ends, reset buttons and slider
-if (typeof Audio !== "undefined") {
-    setTimeout(() => { // wait for audio to be assigned first
-        if (mainAudio)
-            mainAudio.addEventListener("ended", function () {
-                playBtn.style.display = "";
-                pauseBtn.style.display = "none";
-                if (mainTimeSlider) {
-                    mainTimeSlider.value = 0;
-                }
-            });
-    }, 1000);
+// When song ends, reset buttons and UI
+function setupAudioEndedHandler(audio) {
+    if (!audio) return;
+    audio.addEventListener("ended", function () {
+        playBtn.style.display = "";
+        pauseBtn.style.display = "none";
+        // Reset slider and time display
+        if (seekbar) {
+            seekbar.value = 0;
+        }
+        if (currentTimeLabel) {
+            currentTimeLabel.textContent = "00:00";
+        }
+    });
 }
 
 
@@ -424,15 +402,9 @@ function iosRangeTouchHandler(e) {
     e.preventDefault();
 }
 
-// We'll support iOS drag on *all* range sliders, including the main-time-slider
 if (/iPhone|iPad|iPod/.test(navigator.platform)) {
     diagramSliders.forEach(slider => {
         slider.addEventListener("touchstart", iosRangeTouchHandler, { passive: false });
         slider.addEventListener("touchmove", iosRangeTouchHandler, { passive: false });
     });
-    // Also explicitly add for mainTimeSlider if it's not included above
-    if (mainTimeSlider && ![...diagramSliders].includes(mainTimeSlider)) {
-        mainTimeSlider.addEventListener("touchstart", iosRangeTouchHandler, { passive: false });
-        mainTimeSlider.addEventListener("touchmove", iosRangeTouchHandler, { passive: false });
-    }
 }
