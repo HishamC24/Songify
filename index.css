@@ -49,6 +49,19 @@
 
 body {
   background-color: black;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 2rem 0rem;
+  gap: 2rem;
+}
+
+#cards {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .card {
@@ -56,10 +69,6 @@ body {
   width: calc(100vw - 8rem);
   padding: 2rem;
   height: fit-content;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -68,14 +77,18 @@ body {
   backdrop-filter: blur(0.5rem);
   -webkit-backdrop-filter: blur(0.5rem);
   transition: all 0.2s ease-in-out;
-  /* outline: 2px solid color-mix(in srgb, #808080, transparent 75%); */
+}
+
+#main.card {
+  position: relative;
+  z-index: 2;
 }
 
 #next.card {
+  position: absolute;
   scale: 0.9;
-  top: 50%;
-  left: 50%;
-  transform: translate(-55.5%, -64%);
+  top: -3rem;
+  z-index: 1;
 }
 
 .card > * {
@@ -259,11 +272,12 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 50%;
   cursor: pointer;
 }
+
 /*Like button styling*/
 #like-btn {
-  position: fixed;
+  /* position: fixed;
   bottom: 2rem;
-  left: 2rem;
+  left: 2rem; */
   background-color: rgba(255, 255, 255, 0.33);
   color: #000;
   border: none;
@@ -307,4 +321,58 @@ input[type="range"]::-ms-thumb {
   background: #000000;
   border-radius: 50%;
   cursor: pointer;
+}
+
+.bottom-btns {
+  width: calc(100vw - 4rem);
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  align-content: center;
+  justify-content: space-between;
+  gap: 2rem;
+  /* position: fixed;
+  left: 2rem;
+  bottom: 2rem; */
+}
+
+.dislike-btn {
+  background-color: rgba(255, 85, 85, 0.5);
+}
+
+.dislike-btn:active {
+  background-color: rgba(255, 85, 85, 0.75);
+}
+
+.like-btn {
+  background-color: rgba(85, 255, 85, 0.5);
+}
+
+.like-btn:active {
+  background-color: rgba(85, 255, 85, 0.75);
+}
+
+.dislike-btn,
+.like-btn {
+  backdrop-filter: blur(0.5rem);
+  -webkit-backdrop-filter: blur(0.5rem);
+  width: 50%;
+  border-radius: 4rem;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.25s ease-in-out;
+}
+
+.dislike-btn > svg,
+.like-btn > svg {
+  width: 2rem;
+}
+
+.dislike-btn > p,
+.like-btn > p {
+  font-size: 1.5rem;
+  font-weight: 500;
 }
