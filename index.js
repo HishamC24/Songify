@@ -321,62 +321,51 @@ let nextCardHTML = `
         </div>
       </div>
 `
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
-function handleSongSwitch(onSongAction) {
-    // Perform a song action (likeSong or dislikeSong) on the current song
-    if (typeof onSongAction === "function") {
-        onSongAction(currentSong);
-    }
+async function handleSongSwitch(onSongAction) {
+    if (typeof onSongAction === "function") onSongAction(currentSong);
 
-    // Get the cards container, main and next cards
     const cardsContainer = document.getElementById("cards");
     const mainCard = document.getElementById("main");
     const nextCard = document.getElementById("next");
 
-    // Step 1: Delete #main
     if (mainCard) {
-        setTimeout(() => {
-            mainCard.remove();
-            console.log("Main card removed");
-        }, 1000);
+        mainCard.remove();
+        if (debug) console.log("Main card removed");
     }
 
-    // Step 2: Rename #next to #main
     if (nextCard) {
-        setTimeout(() => {
-            nextCard.id = "main";
-            console.log("Next card renamed to main");
-        }, 1000);
+        nextCard.id = "main";
+        if (debug) console.log("Next card renamed to main");
     }
 
-    // Step 3: Update currentSong to nextSong
     currentSong = nextSong;
 
-    // Step 4: Fetch song for the new #main
-    setTimeout(() => {
-        fetchAndDisplaySong(currentSong, "main");
-        console.log("Song fetched and displayed");
-    }, 1000);
+    await delay(200);
+    fetchAndDisplaySong(currentSong, "main");
+    if (debug) console.log("Song fetched and displayed");
 
-    // Step 5: Create #next card with nextCardHTML *above* the main card
-    // At this point, #main exists (was #next), and we want new #next above #main in DOM
     const newMainCard = document.getElementById("main");
     if (newMainCard) {
         newMainCard.insertAdjacentHTML("beforebegin", nextCardHTML);
     } else {
-        // Fallback in case #main does not exist, append at end
         cardsContainer.insertAdjacentHTML("beforeend", nextCardHTML);
     }
+    if (typeof window.applySquircles === "function") {
+        window.applySquircles();
+    }
 
-    // Step 6: Get the new next song and fetch for #next
     nextSong = requestSong();
     fetchAndDisplaySong(nextSong, "next");
 
-    // Step 7: Refresh references and listeners
     refreshAudioPlayerElements();
     setupAudioPlayerListeners();
     attachIOSRangeHandlers();
 }
+
 
 document.getElementById("dislike-btn").addEventListener("click", () => {
     handleSongSwitch(dislikeSong);
