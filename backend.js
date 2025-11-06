@@ -1,5 +1,11 @@
-import { debug } from "./globalSettings.js";
+// ==============================
+// ===== SONGIFY BACKEND ========
+// ==============================
 
+import { debug } from "./globalSettings.js";
+import { updateTasteProfile } from "./backend/songify_logic.js";  // ✅ ADDED
+
+// ===== INITIAL SONG POOL =====
 let songs = [
   "Can't Hold Us Macklemore",
   "GTA 2 Rarin",
@@ -9,49 +15,92 @@ let songs = [
   "How Long Charlie Puth",
   "Hyperspace Sam I"
 ];
-// Load disliked songs from localStorage
-const dislikedSongs = JSON.parse(localStorage.getItem("dislikedSongs") || "[]");
-// Load liked songs from localStorage
-const likedSongs = JSON.parse(localStorage.getItem("likedSongs") || "[]");
 
-// Filter out disliked and liked ones
+// ===== LOCAL STORAGE STATE =====
+
+//const dislikedSongs = JSON.parse(localStorage.getItem("dislikedSongs") || "[]");
+//const likedSongs = JSON.parse(localStorage.getItem("likedSongs") || "[]");
+const dislikedSongs = [];
+const likedSongs = [];
+
+
+// Remove previously *disliked* songs only
 songs = songs.filter(song => !dislikedSongs.includes(song));
-// songs = songs.filter(song => !dislikedSongs.includes(song) && !likedSongs.includes(song));
-if (debug) console.log(localStorage);
+if (debug) console.log("🎶 Loaded songs:", songs);
+if (debug) console.log("👍 liked:", likedSongs, "👎 disliked:", dislikedSongs);
 
-function requestSong() {
+
+// ==========================
+// ===== SONG REQUESTING ====
+// ==========================
+
+export function requestSong() {
   if (songs.length === 0) {
-    console.error("No songs left bby, playing Rick Astley instead");
-    return "Never gonna give you up Rick Astley";
-  };
+    console.error("No songs left bby, playing Rick Astley instead 🎤");
+    return "Never Gonna Give You Up Rick Astley";
+  }
   return songs[Math.floor(Math.random() * songs.length)];
 }
 
-function dislikeSong(songName) {
-  // Avoid duplicates
+
+// =============================
+// ===== LIKE / DISLIKE ========
+// =============================
+
+export async function dislikeSong(song) {
+  if (!song) return console.warn("⚠️ dislikeSong() called with no song object");
+  const songName = song.trackName || song;
+
+  // store name string for filtering
   if (!dislikedSongs.includes(songName)) {
     dislikedSongs.push(songName);
-    localStorage.setItem("dislikedSongs", JSON.stringify(dislikedSongs));
+    //   localStorage.setItem("dislikedSongs", JSON.stringify(dislikedSongs));
   }
 
-  // Remove from list
-  songs = songs.filter(song => song !== songName);
-  if (debug) console.log(`Disliked: ${songName}`);
+  // remove from rotation
+  songs = songs.filter(s => s !== songName);
+  console.log(`👎 Disliked: ${songName}`);
+
+  // update taste vector if full object provided
+  if (typeof song === "object") {
+    const updated = await updateTasteProfile(song, { dislike: true });
+    if (updated) {
+      console.log("🧭 Updated taste vector:", updated);
+      console.log("🎚️ Genres:", updated.genreIdentity.map(v => v.toFixed(2)).join(" | "));
+    }
+  }
 }
 
-function likeSong(songName) {
-  // Avoid duplicates
+export async function likeSong(song) {
+  console.log(song);
+  if (!song) return console.warn("⚠️ likeSong() called with no song object");
+  const songName = song.trackName || song;
+
+  // keep liked songs in rotation — do NOT remove from songs[]
   if (!likedSongs.includes(songName)) {
     likedSongs.push(songName);
-    localStorage.setItem("likedSongs", JSON.stringify(likedSongs));
+    //   localStorage.setItem("likedSongs", JSON.stringify(likedSongs));
   }
 
-  // Optionally remove from list if you do not want to show liked songs again:
-  songs = songs.filter(song => song !== songName);
-  if (debug) console.log(`Liked: ${songName}`);
+  console.log(`👍 Liked: ${songName}`);
+  console.log(typeof song);
+
+  // update taste vector if object provided
+  if (typeof song === "object") {
+    console.log(`test1`);
+    const updated = await updateTasteProfile(song, { like: true });
+    console.log(`test2`);
+    if (updated) {
+      console.log(`test3`);
+      console.log("🧭 Updated taste vector:", updated);
+      console.log("🎚️ Genres:", updated.genreIdentity.map(v => v.toFixed(2)).join(" | "));
+    }
+  }
 }
 
-export { songs, requestSong, dislikeSong, likeSong };
 
+// ========================
+// ===== EXPORTS ==========
+// ========================
 
-
+export { songs };

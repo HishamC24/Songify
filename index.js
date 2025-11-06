@@ -80,11 +80,16 @@ async function fetchAndDisplaySong(songName, divID) {
         if (!results.length) return handleNoSong(divID);
 
         const song = results[0];
+        currentSongJson = song;
+        console.log(currentSong);
         const card = document.getElementById(divID);
         if (!card) {
             if (debug) console.warn("No such div ID:", divID);
             return;
         }
+
+        // Store the full song object for vector updates
+        if (divID === "main") window.currentSongObject = song;
 
         const img = card.querySelector("img");
         const titleElem = card.querySelector(".title");
@@ -272,6 +277,7 @@ setupAudioPlayerListeners();
 // =========================
 
 let currentSong = requestSong();
+let currentSongJson = {};
 let nextSong = requestSong();
 
 fetchAndDisplaySong(currentSong, "main");
@@ -326,7 +332,7 @@ function delay(ms) {
 }
 
 async function handleSongSwitch(onSongAction) {
-    if (typeof onSongAction === "function") onSongAction(currentSong);
+    if (typeof onSongAction === "function") onSongAction(currentSongJson);
 
     const cardsContainer = document.getElementById("cards");
     const mainCard = document.getElementById("main");
@@ -367,11 +373,14 @@ async function handleSongSwitch(onSongAction) {
 }
 
 
+// === Event listeners now use the song object only ===
 document.getElementById("dislike-btn").addEventListener("click", () => {
+    if (!window.currentSongObject) return console.warn("⚠️ No current song object yet!");
     handleSongSwitch(dislikeSong);
 });
 
 document.getElementById("like-btn").addEventListener("click", () => {
+    if (!window.currentSongObject) return console.warn("⚠️ No current song object yet!");
     handleSongSwitch(likeSong);
 });
 
