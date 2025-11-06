@@ -18,15 +18,12 @@
 
     <!-- Songify taste vector system -->
     <script type="module" src="./backend/songify_logic.js"></script>
-    <script src="//cdn.jsdelivr.net/npm/eruda"></script>
+    <!-- <script src="//cdn.jsdelivr.net/npm/eruda"></script>
     <script>
       eruda.init();
-    </script>
+    </script> -->
   </head>
   <body>
-    <div>
-      <button id="dislikeBtn">Dislike Song</button>
-    </div>
     <div>
       <button onclick="songifyVectorTest()">Make Qr</button>
       <button onclick="exportTasteProfileJSON()">Export JSON</button>
@@ -119,7 +116,7 @@
       </div>
     </div>
     <div class="bottom-btns">
-      <div class="dislike-btn">
+      <div id="dislike-btn">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
           <path stroke="none" d="M0 0h24v24H0z" fill="none" />
           <path
@@ -131,7 +128,7 @@
         </svg>
         <p>No</p>
       </div>
-      <div class="like-btn">
+      <div id="like-btn">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
           <path stroke="none" d="M0 0h24v24H0z" fill="none" />
           <path

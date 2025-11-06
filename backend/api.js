@@ -5,6 +5,8 @@
 
 import fs from "fs";
 import OpenAI from "openai";
+import settings from "./globalSettings.json";
+import { debug } from "../globalSettings.js";
 
 // 🔹 Replace with your actual NVIDIA key
 const NVIDIA_API_KEY = "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";
@@ -57,7 +59,7 @@ ${JSON.stringify(tasteVector, null, 2)}
 //  4.  Call NVIDIA + parse response
 // ────────────────────────────────────────────────
 async function main() {
-  console.log("🧠  Requesting recommendations from Llama 3 70B Instruct...\n");
+  if (debug) console.log("🧠  Requesting recommendations from Llama 3 70B Instruct...\n");
 
   const completion = await openai.chat.completions.create({
     model: "meta/llama3-70b-instruct",
@@ -74,9 +76,9 @@ async function main() {
 
   try {
     const songs = JSON.parse(text);
-    console.log("🎧  Recommended songs:\n", songs);
+    if (debug) console.log("🎧  Recommended songs:\n", songs);
   } catch {
-    console.log("⚠️  Model returned non-JSON output:\n", text);
+    if (debug) console.log("⚠️  Model returned non-JSON output:\n", text);
   }
 }
 

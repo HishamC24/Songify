@@ -259,32 +259,6 @@ input[type="range"]::-moz-range-thumb {
   color: #fff;
 }
 
-/* Like Button */
-#like-btn {
-  background-color: rgba(255, 255, 255, 0.33);
-  color: #000;
-  border: none;
-  border-radius: 2rem;
-  padding: 0.75rem 1.5rem;
-  font-size: 1.25rem;
-  font-weight: 500;
-  backdrop-filter: blur(0.5rem);
-  -webkit-backdrop-filter: blur(0.5rem);
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
-}
-
-#like-btn:hover {
-  transform: scale(1.05);
-  background-color: rgba(255, 255, 255, 0.5);
-}
-
-#like-btn.liked {
-  background-color: rgba(255, 0, 0, 0.33);
-  color: #fff;
-}
-
 /* Bottom Buttons (Like / Dislike Pair) */
 .bottom-btns {
   width: calc(100vw - 4rem);
@@ -294,8 +268,8 @@ input[type="range"]::-moz-range-thumb {
   gap: 2rem;
 }
 
-.dislike-btn,
-.like-btn {
+#dislike-btn,
+#like-btn {
   width: 50%;
   border-radius: 4rem;
   padding: 1.5rem 2rem;
@@ -308,31 +282,31 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* Dislike */
-.dislike-btn {
+#dislike-btn {
   background-color: rgba(255, 85, 85, 0.5);
 }
 
-.dislike-btn:active {
+#dislike-btn:active {
   background-color: rgba(255, 85, 85, 0.75);
 }
 
 /* Like */
-.like-btn {
+#like-btn {
   background-color: rgba(85, 255, 85, 0.5);
 }
 
-.like-btn:active {
+#like-btn:active {
   background-color: rgba(85, 255, 85, 0.75);
 }
 
 /* Icons & Text inside bottom buttons */
-.dislike-btn > svg,
-.like-btn > svg {
+#dislike-btn > svg,
+#like-btn > svg {
   width: 2rem;
 }
 
-.dislike-btn > p,
-.like-btn > p {
+#dislike-btn > p,
+#like-btn > p {
   font-size: 1.5rem;
   font-weight: 500;
 }

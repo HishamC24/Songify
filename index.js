@@ -53,7 +53,8 @@ window.addEventListener("appinstalled", () => {
 // ===== SONG FETCHING =====
 // =========================
 
-import { songs, requestSong, dislikeSong } from "./backend.js";
+import { songs, requestSong, dislikeSong, likeSong } from "./backend.js";
+import { debug } from "./globalSettings.js";
 
 let mainAudio = null;
 let mainPreviewUrl = null;
@@ -74,13 +75,16 @@ async function fetchAndDisplaySong(songName, divID) {
     try {
         const response = await fetch(url);
         const data = await response.json();
-
+        if (debug) console.log(data, songName);
         const results = (data.results || []).filter((item) => item.kind === "song");
         if (!results.length) return handleNoSong(divID);
 
         const song = results[0];
         const card = document.getElementById(divID);
-        if (!card) return console.warn("No such div ID:", divID);
+        if (!card) {
+            if (debug) console.warn("No such div ID:", divID);
+            return;
+        }
 
         const img = card.querySelector("img");
         const titleElem = card.querySelector(".title");
@@ -128,7 +132,7 @@ async function fetchAndDisplaySong(songName, divID) {
 }
 
 function handleNoSong(divID) {
-    console.warn("No song results found.");
+    if (debug) console.warn("No song results found.");
     if (divID !== "main") return;
 
     resetAudio();
@@ -138,13 +142,22 @@ function handleNoSong(divID) {
 // ===== AUDIO PLAYER ======
 // =========================
 
-const playBtn = document.querySelector("#main .play");
-const pauseBtn = document.querySelector("#main .pause");
-const seekbar = document.querySelector("#main .seekbar");
-const currentTimeLabel = document.querySelector("#main .currentTimeLabel");
-const durationLabel = document.querySelector("#main .durationLabel");
+let playBtn = document.querySelector("#main .play");
+let pauseBtn = document.querySelector("#main .pause");
+let seekbar = document.querySelector("#main .seekbar");
+let currentTimeLabel = document.querySelector("#main .currentTimeLabel");
+let durationLabel = document.querySelector("#main .durationLabel");
 
-pauseBtn.style.display = "none";
+// Function to refresh audio player element references
+function refreshAudioPlayerElements() {
+    playBtn = document.querySelector("#main .play");
+    pauseBtn = document.querySelector("#main .pause");
+    seekbar = document.querySelector("#main .seekbar");
+    currentTimeLabel = document.querySelector("#main .currentTimeLabel");
+    durationLabel = document.querySelector("#main .durationLabel");
+}
+
+if (pauseBtn) pauseBtn.style.display = "none";
 
 function formatTime(seconds) {
     if (isNaN(seconds) || seconds < 0) return "00:00";
@@ -203,46 +216,55 @@ function setupAudioEndedHandler(audio) {
     audio.addEventListener("ended", resetAudio);
 }
 
-playBtn.addEventListener("click", () => {
-    if (!mainAudio || !mainPreviewUrl) return;
-    mainAudio.currentTime = 0;
-    mainAudio.play();
-    playBtn.style.display = "none";
-    pauseBtn.style.display = "inline";
-});
-
-pauseBtn.addEventListener("click", () => {
-    if (!mainAudio) return;
-    mainAudio.pause();
-    playBtn.style.display = "inline";
-    pauseBtn.style.display = "none";
-});
-
-// =========================
-// ===== SEEKBAR CONTROL ====
-// =========================
-
-if (seekbar) {
-    seekbar.addEventListener("input", () => {
-        if (!mainAudio) return;
-        // Update time label live while dragging
-        currentTimeLabel.textContent = formatTime(seekbar.value);
-    });
-
-    seekbar.addEventListener("change", () => {
-        if (!mainAudio) return;
-
-        // Jump to new time when released or tapped
-        mainAudio.currentTime = seekbar.value;
-
-        // Resume playback if paused and user interacted
-        if (mainAudio.paused && mainPreviewUrl) {
+// Function to set up audio player event listeners
+function setupAudioPlayerListeners() {
+    if (playBtn && !playBtn._listenerAttached) {
+        playBtn.addEventListener("click", () => {
+            if (!mainAudio || !mainPreviewUrl) return;
+            mainAudio.currentTime = 0;
             mainAudio.play();
             playBtn.style.display = "none";
             pauseBtn.style.display = "inline";
-        }
-    });
+        });
+        playBtn._listenerAttached = true;
+    }
+
+    if (pauseBtn && !pauseBtn._listenerAttached) {
+        pauseBtn.addEventListener("click", () => {
+            if (!mainAudio) return;
+            mainAudio.pause();
+            playBtn.style.display = "inline";
+            pauseBtn.style.display = "none";
+        });
+        pauseBtn._listenerAttached = true;
+    }
+
+    if (seekbar && !seekbar._listenerAttached) {
+        seekbar.addEventListener("input", () => {
+            if (!mainAudio) return;
+            // Update time label live while dragging
+            currentTimeLabel.textContent = formatTime(seekbar.value);
+        });
+
+        seekbar.addEventListener("change", () => {
+            if (!mainAudio) return;
+
+            // Jump to new time when released or tapped
+            mainAudio.currentTime = seekbar.value;
+
+            // Resume playback if paused and user interacted
+            if (mainAudio.paused && mainPreviewUrl) {
+                mainAudio.play();
+                playBtn.style.display = "none";
+                pauseBtn.style.display = "inline";
+            }
+        });
+        seekbar._listenerAttached = true;
+    }
 }
+
+// Initial setup
+setupAudioPlayerListeners();
 
 
 // =========================
@@ -255,13 +277,113 @@ let nextSong = requestSong();
 fetchAndDisplaySong(currentSong, "main");
 fetchAndDisplaySong(nextSong, "next");
 
-document.getElementById("dislikeBtn").addEventListener("click", () => {
-    dislikeSong(currentSong);
-    currentSong = nextSong;
-    fetchAndDisplaySong(currentSong, "main");
+let nextCardHTML = `
+      <div class="card" id="next">
+        <img />
+        <div class="explicitcy">
+          <p class="title">Loading...</p>
+        </div>
+        <p class="artist">Loading...</p>
+        <div class="seekbarContainer">
+          <input type="range" class="seekbar" min="0" max="30" value="0" step="0.1" />
+          <div class="seekbarLabels">
+            <span class="currentTimeLabel">00:00</span>
+            <span class="durationLabel">00:30</span>
+          </div>
+        </div>
+        <div class="playerContainer">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="play active">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pause">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+            <path d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+          </svg>
+        </div>
+        <p class="details">Loading...<br />Loading...</p>
+        <div class="volumeContainer">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M15 8a5 5 0 0 1 0 8" />
+            <path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
+          </svg>
 
+          <input type="range" class="volume" min="0" max="100" value="50" step="0.1" />
+
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M15 8a5 5 0 0 1 0 8" />
+            <path d="M17.7 5a9 9 0 0 1 0 14" />
+            <path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
+          </svg>
+        </div>
+      </div>
+`
+
+function handleSongSwitch(onSongAction) {
+    // Perform a song action (likeSong or dislikeSong) on the current song
+    if (typeof onSongAction === "function") {
+        onSongAction(currentSong);
+    }
+
+    // Get the cards container, main and next cards
+    const cardsContainer = document.getElementById("cards");
+    const mainCard = document.getElementById("main");
+    const nextCard = document.getElementById("next");
+
+    // Step 1: Delete #main
+    if (mainCard) {
+        setTimeout(() => {
+            mainCard.remove();
+            console.log("Main card removed");
+        }, 1000);
+    }
+
+    // Step 2: Rename #next to #main
+    if (nextCard) {
+        setTimeout(() => {
+            nextCard.id = "main";
+            console.log("Next card renamed to main");
+        }, 1000);
+    }
+
+    // Step 3: Update currentSong to nextSong
+    currentSong = nextSong;
+
+    // Step 4: Fetch song for the new #main
+    setTimeout(() => {
+        fetchAndDisplaySong(currentSong, "main");
+        console.log("Song fetched and displayed");
+    }, 1000);
+
+    // Step 5: Create #next card with nextCardHTML *above* the main card
+    // At this point, #main exists (was #next), and we want new #next above #main in DOM
+    const newMainCard = document.getElementById("main");
+    if (newMainCard) {
+        newMainCard.insertAdjacentHTML("beforebegin", nextCardHTML);
+    } else {
+        // Fallback in case #main does not exist, append at end
+        cardsContainer.insertAdjacentHTML("beforeend", nextCardHTML);
+    }
+
+    // Step 6: Get the new next song and fetch for #next
     nextSong = requestSong();
     fetchAndDisplaySong(nextSong, "next");
+
+    // Step 7: Refresh references and listeners
+    refreshAudioPlayerElements();
+    setupAudioPlayerListeners();
+    attachIOSRangeHandlers();
+}
+
+document.getElementById("dislike-btn").addEventListener("click", () => {
+    handleSongSwitch(dislikeSong);
+});
+
+document.getElementById("like-btn").addEventListener("click", () => {
+    handleSongSwitch(likeSong);
 });
 
 // =========================
@@ -345,9 +467,18 @@ function iosRangeTouchHandler(e) {
     e.preventDefault();
 }
 
-if (/iPhone|iPad|iPod/.test(navigator.platform)) {
-    document.querySelectorAll('input[type="range"]').forEach((slider) => {
-        slider.addEventListener("touchstart", iosRangeTouchHandler, { passive: false });
-        slider.addEventListener("touchmove", iosRangeTouchHandler, { passive: false });
-    });
+// Function to attach iOS range handlers to range inputs
+function attachIOSRangeHandlers() {
+    if (/iPhone|iPad|iPod/.test(navigator.platform)) {
+        document.querySelectorAll('input[type="range"]').forEach((slider) => {
+            if (!slider._iosHandlerAttached) {
+                slider.addEventListener("touchstart", iosRangeTouchHandler, { passive: false });
+                slider.addEventListener("touchmove", iosRangeTouchHandler, { passive: false });
+                slider._iosHandlerAttached = true;
+            }
+        });
+    }
 }
+
+// Initial attachment
+attachIOSRangeHandlers();

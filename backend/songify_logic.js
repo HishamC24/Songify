@@ -3,6 +3,7 @@
 // =========================
 const clamp = (v, min = 0, max = 1) => Math.min(Math.max(v, min), max);
 
+import { debug } from "../globalSettings.js";
 
 
 // ===== Persistent Taste Profile (localStorage integration) =====
@@ -13,7 +14,7 @@ let tasteProfile;
 if (savedProfile) {
   // Load from localStorage if it exists
   tasteProfile = JSON.parse(savedProfile);
-  console.log("🎵 Loaded saved taste profile:", tasteProfile);
+  if (debug) console.log("🎵 Loaded saved taste profile:", tasteProfile);
 } else {
   // Otherwise start fresh (neutral vector)
   tasteProfile = {
@@ -24,7 +25,7 @@ if (savedProfile) {
     popularityBias: 0.5,
     energyPreference: 0.5,
   };
-  console.log("🎵 Created new default taste profile.");
+  if (debug) console.log("🎵 Created new default taste profile.");
 }
 
 async function fetchSongData(songName) {
@@ -97,7 +98,7 @@ async function updateTasteProfile(songName, signals) {
     tasteProfile.popularityBias = adjust(tasteProfile.popularityBias, 0.05);
   }
 
-  const genres = ["pop","electronic","country","rock","rap","classical","jazz","metal","hip-hop","r&b","latin"];
+  const genres = ["pop", "electronic", "country", "rock", "rap", "classical", "jazz", "metal", "hip-hop", "r&b", "latin"];
   const idx = genres.findIndex(g => song.genre.includes(g));
   if (idx >= 0)
     tasteProfile.genreIdentity[idx] = clamp(
@@ -105,7 +106,7 @@ async function updateTasteProfile(songName, signals) {
       0, 1
     );
 
-  console.log("Updated taste profile:", tasteProfile);
+  if (debug) console.log("Updated taste profile:", tasteProfile);
   saveTasteProfile();
   return tasteProfile;
 }
@@ -113,7 +114,7 @@ async function updateTasteProfile(songName, signals) {
 // Save profile to localStorage after each update
 function saveTasteProfile() {
   localStorage.setItem("songify_tasteProfile", JSON.stringify(tasteProfile));
-  console.log("💾 Taste profile saved to localStorage.");
+  if (debug) console.log("💾 Taste profile saved to localStorage.");
 }
 
 
@@ -153,7 +154,7 @@ export function exportTasteProfileQR(canvasId = "qrCanvas") {
   QRCode.toCanvas(canvas, vectorString, { width: 250 }, err => {
     if (err) console.error(err);
     else {
-      console.log("✅ compact vector QR generated");
+      if (debug) console.log("✅ compact vector QR generated");
       canvas.style.display = "block";
     }
   });
