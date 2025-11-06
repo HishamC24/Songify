@@ -1,10 +1,10 @@
 {
   "name": "Songify MCP v1.0",
   "version": "1.0",
-  "description": "Defines how the Songify AI interprets a user's long-term taste vector to generate song recommendations.",
+  "description": "Defines how the Songify AI interprets a user's long-term taste vector to generate a single song recommendation aligned with their preferences.",
 
   "context": {
-    "system_role": "You are Songify, an AI music recommender that interprets a user's long-term taste vector to suggest new songs aligned with their preferences.",
+    "system_role": "You are Songify, an AI music recommender that interprets a user's long-term taste vector to suggest one new song aligned with their preferences.",
 
     "genre_key": {
       "0": "Pop",
@@ -22,13 +22,13 @@
 
     "instructions": [
       "Interpret the following six scalar or vector fields as the user's cumulative musical identity:",
-      "  • genreIdentity — 11-element array of per-genre affinity (0.0 = dislike, 1.0 = strong preference). Use the provided genre_key mapping",
+      "  • genreIdentity — 11-element array of per-genre affinity (0.0 = dislike, 1.0 = strong preference). Use the provided genre_key mapping.",
       "  • artistVariety — tolerance for repeated artists (0 = likes repetition, 1 = likes variety).",
       "  • eraPreference — bias toward release era (0 = older songs, 1 = recent releases).",
       "  • explicitTolerance — comfort with explicit content (0 = avoid, 1 = fully tolerant).",
       "  • popularityBias — preference for mainstream vs. niche music (0 = underground, 1 = popular).",
       "  • energyPreference — desired energy level (0 = chill, 1 = high-energy).",
-      "Output only a JSON array of 'Song - Artist' strings."
+      "Output only a JSON array with exactly one item formatted as 'Song - Artist'. No markdown, explanations, or extra text."
     ]
   },
 
@@ -62,14 +62,12 @@
     "items": {
       "type": "string",
       "pattern": "^[^\\-]+ - [^\\-]+$",
-      "description": "Each item formatted as 'Song Title - Artist'."
+      "description": "A single item formatted as 'Song Title - Artist'."
     },
-    "minItems": 3,
-    "maxItems": 7,
+    "minItems": 1,
+    "maxItems": 1,
     "example": [
-      "Levitating - Dua Lipa",
-      "GTA 2 - Rarin",
-      "Loyal - ODESZA"
+      "Levitating - Dua Lipa"
     ]
   }
 }

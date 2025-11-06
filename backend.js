@@ -1,20 +1,26 @@
+/*
+
+NEW STUFF
+
+*/
 // ==============================
 // ===== SONGIFY BACKEND ========
 // ==============================
 
 import { debug } from "./globalSettings.js";
-import { updateTasteProfile } from "./backend/songify_logic.js";  // ✅ ADDED
+import { updateTasteProfile } from "./backend/songify_logic.js";
+import { recommendSong, songs } from "./backend/api.js";
 
 // ===== INITIAL SONG POOL =====
-let songs = [
-  "Can't Hold Us Macklemore",
-  "GTA 2 Rarin",
-  "Assumptions Sam Gellaitry",
-  "Levitating Dua Lipa",
-  "Loyal Odesza",
-  "How Long Charlie Puth",
-  "Hyperspace Sam I"
-];
+// let songs = [
+//   "Can't Hold Us Macklemore",
+//   "GTA 2 Rarin",
+//   "Assumptions Sam Gellaitry",
+//   "Levitating Dua Lipa",
+//   "Loyal Odesza",
+//   "How Long Charlie Puth",
+//   "Hyperspace Sam I"
+// ];
 
 // ===== LOCAL STORAGE STATE =====
 
@@ -25,7 +31,10 @@ const likedSongs = [];
 
 
 // Remove previously *disliked* songs only
-songs = songs.filter(song => !dislikedSongs.includes(song));
+// songs = songs.filter(song => !dislikedSongs.includes(song));
+for (let i = songs.length - 1; i >= 0; i--) {
+  if (dislikedSongs.includes(songs[i])) songs.splice(i, 1);
+}
 if (debug) console.log("🎶 Loaded songs:", songs);
 if (debug) console.log("👍 liked:", likedSongs, "👎 disliked:", dislikedSongs);
 
@@ -35,11 +44,21 @@ if (debug) console.log("👍 liked:", likedSongs, "👎 disliked:", dislikedSong
 // ==========================
 
 export function requestSong() {
-  if (songs.length === 0) {
-    console.error("No songs left bby, playing Rick Astley instead 🎤");
-    return "Never Gonna Give You Up Rick Astley";
+  // when theres 3 songs in the array, first have a song ready to return based off the top song of the stack
+  const returnSong = songs[0];
+  songs.shift();
+
+  // then in the queue, request a new Personalized Reccomended song with the ai
+  if (songs.length <= 3) {
+    // console.error("No songs left bby, enqueuing Rick Astley instead 🎤");
+    // return "Never Gonna Give You Up Rick Astley";
+    // songs.push("Never Gonna Give You Up Rick Astley");
+    // instead of pushing never gonna give you up, push the new AI requested song
+    songs.push(recommendSong());
   }
-  return songs[Math.floor(Math.random() * songs.length)];
+
+  // after that, return fthe saved song from step 1
+  return returnSong;
 }
 
 
@@ -58,7 +77,7 @@ export async function dislikeSong(song) {
   }
 
   // remove from rotation
-  songs = songs.filter(s => s !== songName);
+  // songs = songs.filter(s => s !== songName);
   console.log(`👎 Disliked: ${songName}`);
 
   // update taste vector if full object provided

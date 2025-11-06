@@ -99,7 +99,7 @@ async function fetchAndDisplaySong(songName, divID) {
 
         // Update image
         if (img) {
-            img.src = song.artworkUrl100.replace("100x100", "5000x5000");
+            img.src = song.artworkUrl100.replace("100x100", "1500x1500");
             img.alt = `${song.trackName} by ${song.artistName}`;
         }
 

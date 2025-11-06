@@ -11,7 +11,7 @@ let tasteProfile;
 
 if (savedProfile) {
   // Load from localStorage if it exists
-  tasteProfile = JSON.parse(savedProfile);
+ // tasteProfile = JSON.parse(savedProfile); (commented out for debugging)
   console.log("🎵 Loaded saved taste profile:", tasteProfile);
 } else {
   // Otherwise start fresh (neutral vector)
@@ -54,13 +54,20 @@ function computeEnergy(song) {
 // ====== Weight Table ======
 // ==========================
 
+// Logarithmic-like easing: growth slows as value approaches 1
+function logGrow(current, delta, rate = 1.0) {
+  const next = current + delta * rate * (1 - Math.log1p(current));
+  return clamp(next, 0.0001, 0.9999);
+}
+
+
 const signalWeights = {
-  like:      { genre:+0.7, energy:+0.5, popularity:+0.4, explicit:+0.3, era:+0.2, variety:-0.1 },
-  dislike:   { genre:-0.6, energy:-0.5, popularity:-0.4, explicit:-0.3, era:-0.2, variety:+0.1 },
-  listen:    { genre:+0.2, energy:+0.6, popularity:+0.2, explicit: 0.0, era:+0.4, variety:+0.1 },
-  replay:    { genre:+0.3, energy:+0.2, popularity:+0.1, explicit: 0.0, era:+0.6, variety:-0.3 },
-  share:     { genre:+0.3, energy:+0.3, popularity:+0.6, explicit:+0.2, era:+0.3, variety:+0.4 },
-  favorite:  { genre:+0.5, energy:+0.4, popularity:+0.3, explicit:+0.6, era:+0.3, variety:-0.2 }
+  like:      { genre:+0.015, energy:+0.010, popularity:+0.008, explicit:+0.006, era:+0.004, variety:-0.002 },
+  dislike:   { genre:-0.012, energy:-0.010, popularity:-0.008, explicit:-0.006, era:-0.004, variety:+0.002 },
+  listen:    { genre:+0.004, energy:+0.012, popularity:+0.004, explicit: 0.000, era:+0.006, variety:+0.002 },
+  replay:    { genre:+0.006, energy:+0.004, popularity:+0.002, explicit: 0.000, era:+0.010, variety:-0.004 },
+  share:     { genre:+0.006, energy:+0.006, popularity:+0.012, explicit:+0.004, era:+0.006, variety:+0.008 },
+  favorite:  { genre:+0.010, energy:+0.008, popularity:+0.006, explicit:+0.012, era:+0.006, variety:-0.004 }
 };
 
 
@@ -121,11 +128,11 @@ export function updateTasteProfile(song, feedback = {}) {
     }
 
     // --- update scalar components ---
-    tasteProfile.energyPreference      = clamp(tasteProfile.energyPreference      + lr * w.energy      * mult * (energy - 0.5), 0, 1);
-    tasteProfile.popularityBias        = clamp(tasteProfile.popularityBias        + lr * w.popularity  * mult * (popularity - 0.5), 0, 1);
-    tasteProfile.explicitnessTolerance = clamp(tasteProfile.explicitnessTolerance + lr * w.explicit    * mult * (explicit - 0.5), 0, 1);
-    tasteProfile.eraPreference         = clamp(tasteProfile.eraPreference         + lr * w.era         * mult * (recentness - 0.5), 0, 1);
-    tasteProfile.artistVariety         = clamp(tasteProfile.artistVariety         + lr * w.variety     * mult, 0, 1);
+    tasteProfile.energyPreference      = logGrow(tasteProfile.energyPreference      + lr * w.energy      * mult * (energy - 0.5), 0, 1);
+    tasteProfile.popularityBias        = logGrow(tasteProfile.popularityBias        + lr * w.popularity  * mult * (popularity - 0.5), 0, 1);
+    tasteProfile.explicitnessTolerance = logGrow(tasteProfile.explicitnessTolerance + lr * w.explicit    * mult * (explicit - 0.5), 0, 1);
+    tasteProfile.eraPreference         = logGrow(tasteProfile.eraPreference         + lr * w.era         * mult * (recentness - 0.5), 0, 1);
+    tasteProfile.artistVariety         = logGrow(tasteProfile.artistVariety         + lr * w.variety     * mult, 0, 1);
   }
 
   saveTasteProfile();
