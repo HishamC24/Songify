@@ -4,28 +4,29 @@
  */
 
 // 🔹 Replace with your OpenRouter key (safe for local dev)
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = "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";
 
-// Example fallback songs
+// Example fallback song
 export let songs = [
   "Can't Hold Us - Macklemore",
   "GTA 2 - Rarin",
   "Assumptions - Sam Gellaitry",
-    "Levitating Dua Lipa",
-    "Loyal - Odesza",
+  "Levitating Dua Lipa",
+  "Loyal - Odesza",
   "How Long - Charlie Puth",
   "Hyperspace - Sam I"
 ];
 
 // Example taste vector
 const tasteVector = {
-  genreIdentity: [0.8, 0.3, 0.4, 0.7, 0.5, 0.2, 0.9, 0.1, 0.6, 0.8, 0.3],
-  artistVariety: 0.7,
-  eraPreference: 0.6,
-  explicitTolerance: 0.5,
-  popularityBias: 0.3,
-  energyPreference: 0.9
+  genreIdentity: [0.812, 0.327, 0.438, 0.701, 0.529, 0.243, 0.892, 0.115, 0.674, 0.801, 0.318],
+  artistVariety: 0.713,
+  eraPreference: 0.624,
+  explicitnessTolerance: 0.497,
+  popularityBias: 0.304,
+  energyPreference: 0.883
 };
+
 
 // ────────────────────────────────────────────────
 //  Helper: build the AI prompt
@@ -39,7 +40,7 @@ ${MCP.context.instructions.join("\n")}
 Use this genre key mapping:
 ${JSON.stringify(MCP.context.genre_key, null, 2)}
 
-Your entire reply must be a valid JSON array (3–7 items) of "Song - Artist" strings.
+Your entire reply must be a valid JSON array (1 items) of a "Song - Artist" string.
 Start with '[' and end with ']'.
 
 Taste vector:

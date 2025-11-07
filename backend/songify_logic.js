@@ -7,24 +7,35 @@ const clamp = (v, min = 0, max = 1) => Math.min(Math.max(v, min), max);
 
 // ===== Persistent Taste Profile (localStorage integration) =====
 const savedProfile = localStorage.getItem("songify_tasteProfile");
-let tasteProfile;
 
-if (savedProfile) {
-  // Load from localStorage if it exists
- // tasteProfile = JSON.parse(savedProfile); (commented out for debugging)
-  console.log("🎵 Loaded saved taste profile:", tasteProfile);
-} else {
-  // Otherwise start fresh (neutral vector)
-  tasteProfile = {
-    genreIdentity: Array(11).fill(0.5),
-    artistVariety: 0.5,
-    eraPreference: 0.5,
-    explicitnessTolerance: 0.5,
-    popularityBias: 0.5,
-    energyPreference: 0.5,
-  };
-  console.log("🎵 Created new default taste profile.");
-}
+let tasteProfile = {
+        genreIdentity: Array(11).fill(0.500),
+        artistVariety: 0.500,
+        eraPreference: 0.500,
+        explicitnessTolerance: 0.500,
+        popularityBias: 0.500,
+        energyPreference: 0.500,
+};
+
+console.log("🎵 Created new default taste profile.", tasteProfile);
+// LOAD SAVED PROFILE
+
+// if (savedProfile) {
+//   // Load from localStorage if it exists
+//  // tasteProfile = JSON.parse(savedProfile); (commented out for debugging)
+//   console.log("🎵 Loaded saved taste profile:", tasteProfile);
+// } else {
+//   // Otherwise start fresh (neutral vector)
+//   tasteProfile = {
+//     genreIdentity: Array(11).fill(0.500),
+//     artistVariety: 0.500,
+//     eraPreference: 0.500,
+//     explicitnessTolerance: 0.500,
+//     popularityBias: 0.500,
+//     energyPreference: 0.500,
+//   };
+//   console.log("🎵 Created new default taste profile.");
+// }
 
 
 
@@ -86,7 +97,7 @@ export function updateTasteProfile(song, feedback = {}) {
 
   console.log("🎧 Using currentSongData for:", song.trackName, "-", song.artistName);
 
-  const lr = 0.06; // learning rate
+  const lr = 0.02; // learning rate
 
   // turn the feedback flags into a simple list of active signals
   const activeSignals = Object.entries(feedback).filter(([_, v]) => v);
@@ -97,7 +108,7 @@ export function updateTasteProfile(song, feedback = {}) {
     trackName: song.trackName,
     artistName: song.artistName,
     genre: song.primaryGenreName?.toLowerCase() || "",
-    explicit: song.explicit,
+    explicit: song.explicit ?? false,
   });
 
   const popularity = estimatePopularity(song);
@@ -109,6 +120,7 @@ export function updateTasteProfile(song, feedback = {}) {
     "pop","hip-hop","r&b","rock","indie",
     "country","electronic","jazz","alternative","dance","classical"
   ];
+  
   const gIndex = genres.findIndex(g =>
     (song.primaryGenreName || "").toLowerCase().includes(g)
   );
@@ -121,23 +133,28 @@ export function updateTasteProfile(song, feedback = {}) {
     // --- update 11-dimensional genre vector ---
     for (let i = 0; i < genres.length; i++) {
       const influence = (i === gIndex ? 1.0 : 0.15);
-      tasteProfile.genreIdentity[i] = clamp(
-        tasteProfile.genreIdentity[i] + lr * w.genre * mult * influence,
-        0, 1
-      );
+      const delta = lr * w.genre * mult * influence;
+      tasteProfile.genreIdentity[i] = logGrow(tasteProfile.genreIdentity[i], delta);
     }
 
     // --- update scalar components ---
-    tasteProfile.energyPreference      = logGrow(tasteProfile.energyPreference      + lr * w.energy      * mult * (energy - 0.5), 0, 1);
-    tasteProfile.popularityBias        = logGrow(tasteProfile.popularityBias        + lr * w.popularity  * mult * (popularity - 0.5), 0, 1);
-    tasteProfile.explicitnessTolerance = logGrow(tasteProfile.explicitnessTolerance + lr * w.explicit    * mult * (explicit - 0.5), 0, 1);
-    tasteProfile.eraPreference         = logGrow(tasteProfile.eraPreference         + lr * w.era         * mult * (recentness - 0.5), 0, 1);
-    tasteProfile.artistVariety         = logGrow(tasteProfile.artistVariety         + lr * w.variety     * mult, 0, 1);
+    // --- Update scalar components safely ---
+    tasteProfile.energyPreference      = logGrow(tasteProfile.energyPreference,      lr * w.energy     * mult * (energy - 0.5));
+    tasteProfile.popularityBias        = logGrow(tasteProfile.popularityBias,        lr * w.popularity * mult * (popularity - 0.5));
+    tasteProfile.explicitnessTolerance = logGrow(tasteProfile.explicitnessTolerance, lr * w.explicit   * mult * (explicit - 0.5));
+    tasteProfile.eraPreference         = logGrow(tasteProfile.eraPreference,         lr * w.era        * mult * (recentness - 0.5));
+    tasteProfile.artistVariety         = logGrow(tasteProfile.artistVariety,         lr * w.variety    * mult);
+
   }
 
   saveTasteProfile();
   logVector();
-  console.log("🧭 Taste profile updated:", tasteProfile);
+
+  const rounded = JSON.parse(JSON.stringify(tasteProfile, (k, v) =>
+    typeof v === "number" ? Number(v.toFixed(4)) : v
+  ));
+
+  console.log("🧭 Taste profile updated:", rounded);
   return tasteProfile;
 }
 

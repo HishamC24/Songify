@@ -25,7 +25,7 @@
       "  • genreIdentity — 11-element array of per-genre affinity (0.0 = dislike, 1.0 = strong preference). Use the provided genre_key mapping.",
       "  • artistVariety — tolerance for repeated artists (0 = likes repetition, 1 = likes variety).",
       "  • eraPreference — bias toward release era (0 = older songs, 1 = recent releases).",
-      "  • explicitTolerance — comfort with explicit content (0 = avoid, 1 = fully tolerant).",
+      "  • explicitnessTolerance — comfort with explicit content (0 = avoid, 1 = fully tolerant).",
       "  • popularityBias — preference for mainstream vs. niche music (0 = underground, 1 = popular).",
       "  • energyPreference — desired energy level (0 = chill, 1 = high-energy).",
       "Output only a JSON array with exactly one item formatted as 'Song - Artist'. No markdown, explanations, or extra text."
@@ -43,7 +43,7 @@
       },
       "artistVariety": { "type": "number", "minimum": 0, "maximum": 1 },
       "eraPreference": { "type": "number", "minimum": 0, "maximum": 1 },
-      "explicitTolerance": { "type": "number", "minimum": 0, "maximum": 1 },
+      "explicitnessTolerance": { "type": "number", "minimum": 0, "maximum": 1 },
       "popularityBias": { "type": "number", "minimum": 0, "maximum": 1 },
       "energyPreference": { "type": "number", "minimum": 0, "maximum": 1 }
     },
@@ -51,7 +51,7 @@
       "genreIdentity",
       "artistVariety",
       "eraPreference",
-      "explicitTolerance",
+      "explicitnessTolerance",
       "popularityBias",
       "energyPreference"
     ]
