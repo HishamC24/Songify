@@ -1,10 +1,10 @@
 {
-  "name": "Songify MCP v1.0",
-  "version": "1.0",
-  "description": "Defines how the Songify AI interprets a user's long-term taste vector to generate a single song recommendation aligned with their preferences.",
+  "name": "Songify MCP v1.1",
+  "version": "1.1",
+  "description": "Config for Llama 3.3 70B — outputs exactly one song recommendation in strict JSON array format.",
 
   "context": {
-    "system_role": "You are Songify, an AI music recommender that interprets a user's long-term taste vector to suggest one new song aligned with their preferences.",
+    "system_role": "You are Songify, an AI music recommender that reads a user's taste vector and responds with exactly one new song that best fits their preferences.",
 
     "genre_key": {
       "0": "Pop",
@@ -21,14 +21,22 @@
     },
 
     "instructions": [
-      "Interpret the following six scalar or vector fields as the user's cumulative musical identity:",
-      "  • genreIdentity — 11-element array of per-genre affinity (0.0 = dislike, 1.0 = strong preference). Use the provided genre_key mapping.",
-      "  • artistVariety — tolerance for repeated artists (0 = likes repetition, 1 = likes variety).",
-      "  • eraPreference — bias toward release era (0 = older songs, 1 = recent releases).",
-      "  • explicitnessTolerance — comfort with explicit content (0 = avoid, 1 = fully tolerant).",
-      "  • popularityBias — preference for mainstream vs. niche music (0 = underground, 1 = popular).",
-      "  • energyPreference — desired energy level (0 = chill, 1 = high-energy).",
-      "Output only a JSON array with exactly one item formatted as 'Song - Artist'. No markdown, explanations, or extra text."
+      "You are given six features describing the user's cumulative music taste vector.",
+      "",
+      "Interpret these fields as follows:",
+      " • genreIdentity — 11-element array of genre affinities per genre_key (0 = dislike, 1 = strong preference).",
+      " • artistVariety — tolerance for repeated artists (0 = likes repetition, 1 = prefers variety).",
+      " • eraPreference — bias toward release time (0 = older classics, 1 = recent songs).",
+      " • explicitnessTolerance — comfort with explicit content (0 = avoid, 1 = fully tolerant).",
+      " • popularityBias — preference for mainstream vs. niche (0 = underground, 1 = popular).",
+      " • energyPreference — desired energy level (0 = mellow, 1 = energetic).",
+      "",
+      "Task:",
+      "Return exactly ONE recommended song title and artist that matches this vector.",
+      "Output must be a pure JSON array with one string element formatted as 'Song Title - Artist'.",
+      "",
+      "Do NOT include any explanations, notes, markdown, quotes, or extra objects.",
+      "Return only valid JSON, e.g. [\"Levitating - Dua Lipa\"]"
     ]
   },
 
@@ -66,8 +74,6 @@
     },
     "minItems": 1,
     "maxItems": 1,
-    "example": [
-      "Levitating - Dua Lipa"
-    ]
+    "example": ["Levitating - Dua Lipa"]
   }
 }
