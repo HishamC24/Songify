@@ -100,7 +100,7 @@ export async function recommendSong(vector = tasteVector, retryCount = 0) {
 
     songs = parsed;
     const song = songs[0];
-    console.log("🎧 Recommended song:", song);
+    if (debug) console.log("🎧 Recommended song:", song);
 
     // --- Prevent duplicates ---
     if (recentSongs.includes(song) && retryCount < 3) {
@@ -114,13 +114,13 @@ export async function recommendSong(vector = tasteVector, retryCount = 0) {
       recentSongs.shift(); // keep last 10
     }
 
-    console.log("🕒 Recent songs memory:", recentSongs);
+    if (debug) console.log("🕒 Recent songs memory:", recentSongs);
     return song;
 
   } catch (err) {
     console.error("⚠️ Error fetching songs from OpenRouter:", err);
     const fallback = songs[Math.floor(Math.random() * songs.length)];
-    console.log("🎵 Returning fallback song:", fallback);
+    if (debug) console.log("🎵 Returning fallback song:", fallback);
     return fallback;
   }
 }

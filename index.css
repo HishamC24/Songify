@@ -94,6 +94,8 @@ body {
 #main.card {
   position: relative;
   z-index: 2;
+  transition: transform 0.35s cubic-bezier(0.7, -0.3, 0.4, 1.5), background-color 0.2s, box-shadow 0.2s;
+  will-change: transform;
 }
 
 #next.card {

@@ -78,20 +78,20 @@ export async function dislikeSong(song) {
 
   // remove from rotation
   // songs = songs.filter(s => s !== songName);
-  console.log(`👎 Disliked: ${songName}`);
+  if (debug) console.log(`👎 Disliked: ${songName}`);
 
   // update taste vector if full object provided
   if (typeof song === "object") {
     const updated = await updateTasteProfile(song, { dislike: true });
     if (updated) {
-      console.log("🧭 Updated taste vector:", updated);
-      console.log("🎚️ Genres:", updated.genreIdentity.map(v => v.toFixed(2)).join(" | "));
+      if (debug) console.log("🧭 Updated taste vector:", updated);
+      if (debug) console.log("🎚️ Genres:", updated.genreIdentity.map(v => v.toFixed(2)).join(" | "));
     }
   }
 }
 
 export async function likeSong(song) {
-  console.log(song);
+  if (debug) console.log(song);
   if (!song) return console.warn("⚠️ likeSong() called with no song object");
   const songName = song.trackName || song;
 
@@ -101,18 +101,15 @@ export async function likeSong(song) {
     //   localStorage.setItem("likedSongs", JSON.stringify(likedSongs));
   }
 
-  console.log(`👍 Liked: ${songName}`);
-  console.log(typeof song);
+  if (debug) console.log(`👍 Liked: ${songName}`);
+  if (debug) console.log(typeof song);
 
   // update taste vector if object provided
   if (typeof song === "object") {
-    console.log(`test1`);
     const updated = await updateTasteProfile(song, { like: true });
-    console.log(`test2`);
     if (updated) {
-      console.log(`test3`);
-      console.log("🧭 Updated taste vector:", updated);
-      console.log("🎚️ Genres:", updated.genreIdentity.map(v => v.toFixed(2)).join(" | "));
+      if (debug) console.log("🧭 Updated taste vector:", updated);
+      if (debug) console.log("🎚️ Genres:", updated.genreIdentity.map(v => v.toFixed(2)).join(" | "));
     }
   }
 }

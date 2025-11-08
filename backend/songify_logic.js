@@ -1,3 +1,5 @@
+import { debug } from "../globalSettings.js";
+
 // =========================
 // === SONGIFY VECTOR LOGIC ===
 // =========================
@@ -9,15 +11,15 @@ const clamp = (v, min = 0, max = 1) => Math.min(Math.max(v, min), max);
 const savedProfile = localStorage.getItem("songify_tasteProfile");
 
 let tasteProfile = {
-        genreIdentity: Array(11).fill(0.500),
-        artistVariety: 0.500,
-        eraPreference: 0.500,
-        explicitnessTolerance: 0.500,
-        popularityBias: 0.500,
-        energyPreference: 0.500,
+  genreIdentity: Array(11).fill(0.500),
+  artistVariety: 0.500,
+  eraPreference: 0.500,
+  explicitnessTolerance: 0.500,
+  popularityBias: 0.500,
+  energyPreference: 0.500,
 };
 
-console.log("🎵 Created new default taste profile.", tasteProfile);
+if (debug) console.log("🎵 Created new default taste profile.", tasteProfile);
 // LOAD SAVED PROFILE
 
 // if (savedProfile) {
@@ -73,12 +75,12 @@ function logGrow(current, delta, rate = 1.0) {
 
 
 const signalWeights = {
-  like:      { genre:+0.015, energy:+0.010, popularity:+0.008, explicit:+0.006, era:+0.004, variety:-0.002 },
-  dislike:   { genre:-0.012, energy:-0.010, popularity:-0.008, explicit:-0.006, era:-0.004, variety:+0.002 },
-  listen:    { genre:+0.004, energy:+0.012, popularity:+0.004, explicit: 0.000, era:+0.006, variety:+0.002 },
-  replay:    { genre:+0.006, energy:+0.004, popularity:+0.002, explicit: 0.000, era:+0.010, variety:-0.004 },
-  share:     { genre:+0.006, energy:+0.006, popularity:+0.012, explicit:+0.004, era:+0.006, variety:+0.008 },
-  favorite:  { genre:+0.010, energy:+0.008, popularity:+0.006, explicit:+0.012, era:+0.006, variety:-0.004 }
+  like: { genre: +0.015, energy: +0.010, popularity: +0.008, explicit: +0.006, era: +0.004, variety: -0.002 },
+  dislike: { genre: -0.012, energy: -0.010, popularity: -0.008, explicit: -0.006, era: -0.004, variety: +0.002 },
+  listen: { genre: +0.004, energy: +0.012, popularity: +0.004, explicit: 0.000, era: +0.006, variety: +0.002 },
+  replay: { genre: +0.006, energy: +0.004, popularity: +0.002, explicit: 0.000, era: +0.010, variety: -0.004 },
+  share: { genre: +0.006, energy: +0.006, popularity: +0.012, explicit: +0.004, era: +0.006, variety: +0.008 },
+  favorite: { genre: +0.010, energy: +0.008, popularity: +0.006, explicit: +0.012, era: +0.006, variety: -0.004 }
 };
 
 
@@ -95,7 +97,7 @@ export function updateTasteProfile(song, feedback = {}) {
     return;
   }
 
-  console.log("🎧 Using currentSongData for:", song.trackName, "-", song.artistName);
+  if (debug) console.log("🎧 Using currentSongData for:", song.trackName, "-", song.artistName);
 
   const lr = 0.02; // learning rate
 
@@ -117,10 +119,10 @@ export function updateTasteProfile(song, feedback = {}) {
   const recentness = 1 - Math.min((currentYear - (song.releaseYear || currentYear)) / 40, 1);
 
   const genres = [
-    "pop","hip-hop","r&b","rock","indie",
-    "country","electronic","jazz","alternative","dance","classical"
+    "pop", "hip-hop", "r&b", "rock", "indie",
+    "country", "electronic", "jazz", "alternative", "dance", "classical"
   ];
-  
+
   const gIndex = genres.findIndex(g =>
     (song.primaryGenreName || "").toLowerCase().includes(g)
   );
@@ -139,11 +141,11 @@ export function updateTasteProfile(song, feedback = {}) {
 
     // --- update scalar components ---
     // --- Update scalar components safely ---
-    tasteProfile.energyPreference      = logGrow(tasteProfile.energyPreference,      lr * w.energy     * mult * (energy - 0.5));
-    tasteProfile.popularityBias        = logGrow(tasteProfile.popularityBias,        lr * w.popularity * mult * (popularity - 0.5));
-    tasteProfile.explicitnessTolerance = logGrow(tasteProfile.explicitnessTolerance, lr * w.explicit   * mult * (explicit - 0.5));
-    tasteProfile.eraPreference         = logGrow(tasteProfile.eraPreference,         lr * w.era        * mult * (recentness - 0.5));
-    tasteProfile.artistVariety         = logGrow(tasteProfile.artistVariety,         lr * w.variety    * mult);
+    tasteProfile.energyPreference = logGrow(tasteProfile.energyPreference, lr * w.energy * mult * (energy - 0.5));
+    tasteProfile.popularityBias = logGrow(tasteProfile.popularityBias, lr * w.popularity * mult * (popularity - 0.5));
+    tasteProfile.explicitnessTolerance = logGrow(tasteProfile.explicitnessTolerance, lr * w.explicit * mult * (explicit - 0.5));
+    tasteProfile.eraPreference = logGrow(tasteProfile.eraPreference, lr * w.era * mult * (recentness - 0.5));
+    tasteProfile.artistVariety = logGrow(tasteProfile.artistVariety, lr * w.variety * mult);
 
   }
 
@@ -154,7 +156,7 @@ export function updateTasteProfile(song, feedback = {}) {
     typeof v === "number" ? Number(v.toFixed(4)) : v
   ));
 
-  console.log("🧭 Taste profile updated:", rounded);
+  if (debug) console.log("🧭 Taste profile updated:", rounded);
   return tasteProfile;
 }
 
@@ -165,16 +167,16 @@ export function updateTasteProfile(song, feedback = {}) {
 
 function saveTasteProfile() {
   localStorage.setItem("songify_tasteProfile", JSON.stringify(tasteProfile));
-  console.log("💾 Taste profile saved to localStorage.");
+  if (debug) console.log("💾 Taste profile saved to localStorage.");
 }
 
 function logVector() {
   const genres = [
-    "pop","hip-hop","r&b","rock","indie",
-    "country","electronic","jazz","alternative","dance","classical"
+    "pop", "hip-hop", "r&b", "rock", "indie",
+    "country", "electronic", "jazz", "alternative", "dance", "classical"
   ];
-  const summary = genres.map((g,i) => `${g}:${tasteProfile.genreIdentity[i].toFixed(2)}`).join(" | ");
-  console.log("🎚️ Genres:", summary);
+  const summary = genres.map((g, i) => `${g}:${tasteProfile.genreIdentity[i].toFixed(2)}`).join(" | ");
+  if (debug) console.log("🎚️ Genres:", summary);
 }
 
 
@@ -215,7 +217,7 @@ export function exportTasteProfileQR(canvasId = "qrCanvas") {
   QRCode.toCanvas(canvas, vectorString, { width: 250 }, err => {
     if (err) console.error(err);
     else {
-      console.log("✅ compact vector QR generated");
+      if (debug) console.log("✅ compact vector QR generated");
       canvas.style.display = "block";
     }
   });

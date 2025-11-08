@@ -81,7 +81,7 @@ async function fetchAndDisplaySong(songName, divID) {
 
         const song = results[0];
         currentSongJson = song;
-        console.log(currentSong);
+        if (debug) console.log(currentSong);
         const card = document.getElementById(divID);
         if (!card) {
             if (debug) console.warn("No such div ID:", divID);
@@ -226,10 +226,10 @@ function setupAudioPlayerListeners() {
     if (playBtn && !playBtn._listenerAttached) {
         playBtn.addEventListener("click", () => {
             if (!mainAudio || !mainPreviewUrl) return;
-            mainAudio.currentTime = 0;
             mainAudio.play();
             playBtn.style.display = "none";
             pauseBtn.style.display = "inline";
+            mainCardPlaying = true;
         });
         playBtn._listenerAttached = true;
     }
@@ -240,6 +240,7 @@ function setupAudioPlayerListeners() {
             mainAudio.pause();
             playBtn.style.display = "inline";
             pauseBtn.style.display = "none";
+            mainCardPlaying = false;
         });
         pauseBtn._listenerAttached = true;
     }
@@ -331,6 +332,8 @@ function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+let mainCardPlaying = false;
+
 async function handleSongSwitch(onSongAction) {
     if (typeof onSongAction === "function") onSongAction(currentSongJson);
 
@@ -351,7 +354,7 @@ async function handleSongSwitch(onSongAction) {
     currentSong = nextSong;
 
     await delay(200);
-    fetchAndDisplaySong(currentSong, "main");
+    await fetchAndDisplaySong(currentSong, "main");
     if (debug) console.log("Song fetched and displayed");
 
     const newMainCard = document.getElementById("main");
@@ -370,8 +373,20 @@ async function handleSongSwitch(onSongAction) {
     refreshAudioPlayerElements();
     setupAudioPlayerListeners();
     attachIOSRangeHandlers();
+    // --- NEW BLOCK: Auto-play logic for new card ---
+    if (mainCardPlaying && mainAudio) {
+        // Ensure play button triggers (if not already playing)
+        mainAudio.currentTime = 0;
+        mainAudio.play();
+        if (playBtn && pauseBtn) {
+            playBtn.style.display = "none";
+            pauseBtn.style.display = "inline";
+        }
+    }
 }
 
+// Assign once for gesture IIFE only
+window.handleSongSwitch = handleSongSwitch;
 
 // === Event listeners now use the song object only ===
 document.getElementById("dislike-btn").addEventListener("click", () => {
@@ -480,3 +495,122 @@ function attachIOSRangeHandlers() {
 
 // Initial attachment
 attachIOSRangeHandlers();
+
+// ===========
+// CARD DRAG MOBILE GESTURE FOR #main
+// ===========
+
+(function setupMainCardDrag() {
+    let mainCard = document.getElementById("main");
+
+    let startX = 0;
+    let lastX = 0;
+    let dragging = false;
+    let cardWidth = mainCard ? mainCard.getBoundingClientRect().width : 0;
+
+    const thresholdFraction = 0.33;
+    const minThresholdPx = 120;
+
+    function setCardTransition(card, on) {
+        card.style.transition = on ? 'transform 0.32s cubic-bezier(.7,-0.3,.4,1.16)' : 'none';
+    }
+    function setCardX(card, x) {
+        // max rotation (deg)
+        const maxAngle = 12;
+        if (card) {
+            // Clamp angle proportional to x, max +-maxAngle at window width
+            const angle = Math.max(-maxAngle, Math.min(maxAngle, (x / window.innerWidth) * maxAngle));
+            card.style.transform = `translateX(${x}px) rotate(${angle}deg)`;
+        }
+    }
+
+    function resetCard() {
+        if (!mainCard) return;
+        setCardTransition(mainCard, true);
+        setCardX(mainCard, 0); // angle will also reset to 0deg
+    }
+
+    function handleRelease() {
+        if (!mainCard) return;
+        const threshold = Math.max(cardWidth * thresholdFraction, minThresholdPx);
+        setCardTransition(mainCard, true);
+        if (Math.abs(lastX) > threshold) {
+            const off = (lastX > 0) ? window.innerWidth : -window.innerWidth;
+            setCardX(mainCard, off);
+            const handler = () => {
+                mainCard.removeEventListener('transitionend', handler);
+                if (lastX > 0) {
+                    handleSongSwitch(likeSong);
+                } else {
+                    handleSongSwitch(dislikeSong);
+                }
+            };
+            mainCard.addEventListener('transitionend', handler);
+        } else {
+            setCardX(mainCard, 0);
+        }
+    }
+
+    function onTouchStart(e) {
+        if (!mainCard) return;
+        if (e.touches.length > 1) return;
+        const touch = e.touches[0];
+        let el = document.elementFromPoint(touch.clientX, touch.clientY);
+        while (el && el !== mainCard) {
+            if (el.classList && (el.classList.contains("seekbarContainer") || el.classList.contains("volumeContainer"))) {
+                dragging = false;
+                return;
+            }
+            el = el.parentElement;
+        }
+        dragging = true;
+        setCardTransition(mainCard, false);
+        startX = e.touches[0].clientX;
+        lastX = 0;
+    }
+
+    function onTouchMove(e) {
+        if (!dragging) return;
+        if (e.touches.length > 1) return;
+        if (!mainCard) return;
+        const dx = e.touches[0].clientX - startX;
+        lastX = dx;
+        setCardTransition(mainCard, false);
+        setCardX(mainCard, dx);
+        e.preventDefault(); // Prevents vertical scroll when dragging
+    }
+
+    function onTouchEnd(e) {
+        if (!dragging) return;
+        dragging = false;
+        handleRelease();
+    }
+
+    function cleanListeners(card) {
+        card.removeEventListener('touchstart', onTouchStart);
+        card.removeEventListener('touchmove', onTouchMove);
+        card.removeEventListener('touchend', onTouchEnd);
+        card.removeEventListener('touchcancel', onTouchEnd);
+    }
+
+    function attach() {
+        mainCard = document.getElementById("main");
+        if (!mainCard) return;
+        cleanListeners(mainCard);
+        mainCard.addEventListener('touchstart', onTouchStart, { passive: false });
+        mainCard.addEventListener('touchmove', onTouchMove, { passive: false });
+        mainCard.addEventListener('touchend', onTouchEnd);
+        mainCard.addEventListener('touchcancel', onTouchEnd);
+    }
+
+    // Observe for replacing main card
+    const observer = new MutationObserver(() => {
+        attach();
+    });
+    const observeTarget = () => {
+        mainCard = document.getElementById("main");
+        if (mainCard) observer.observe(mainCard.parentElement, { childList: true });
+    };
+    attach();
+    observeTarget();
+})();
