@@ -64,6 +64,7 @@ nav {
   align-items: center;
   width: calc(100vw - (2 * 2rem));
   margin: 2rem;
+  z-index: 1000;
 }
 
 nav > p {
@@ -77,6 +78,8 @@ nav > p {
   background-color: rgba(0, 128, 255, 0.5);
   padding: 0.75rem;
   border-radius: 2.5rem;
+  backdrop-filter: blur(0.5rem);
+  -webkit-backdrop-filter: blur(0.5rem);
   display: flex;
   transition: all 0.1s ease-in-out;
 }

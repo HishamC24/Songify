@@ -163,6 +163,7 @@ function formatTime(seconds) {
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+// When mainAudio ends, loop it by replaying
 function setupMainAudio(previewUrl) {
     if (mainAudio) mainAudio.pause();
     mainPreviewUrl = previewUrl || null;
@@ -209,8 +210,20 @@ function setupAudioProgressTracking(audio) {
     });
 }
 
+// Instead of just resetting, loop the audio when it ends
 function setupAudioEndedHandler(audio) {
-    audio.addEventListener("ended", resetAudio);
+    audio.addEventListener("ended", () => {
+        // Loop the song: restart from the beginning and play again
+        if (audio.currentTime !== 0) audio.currentTime = 0;
+        if (!audio.paused) {
+            audio.play();
+        } else {
+            // Optionally, auto-start only if the UI considers it 'playing'
+            if (mainCardPlaying && mainAudio === audio) {
+                audio.play();
+            }
+        }
+    });
 }
 
 function setupAudioPlayerListeners() {
