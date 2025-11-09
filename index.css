@@ -41,6 +41,9 @@
  2. GLOBAL RESET & BASE STYLES
  ========================================= */
 
+:root {
+  --simWidth: 440;
+}
 * {
   font-family: "SF Pro Display";
   font-weight: 300;
@@ -62,15 +65,15 @@ nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: calc(100vw - (2 * 2rem));
-  margin: 2rem;
+  width: calc(376 / var(--simWidth) * 100vw);
+  margin: calc(32 / var(--simWidth) * 100vw);
   z-index: 1000;
 }
 
 nav > p {
   color: #fff;
   font-weight: 900;
-  font-size: 2.5rem;
+  font-size: 32px;
   /* padding-left: 0.5rem; */
 }
 
@@ -97,8 +100,8 @@ nav > p {
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  min-height: 100dvh;
-  gap: 2rem;
+  min-height: 100vh;
+  gap: calc(32 / var(--simWidth) * 100vw);
 }
 
 /* =========================================
@@ -109,6 +112,7 @@ nav > p {
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-top: calc(32px / var(--simWidth) * 100vw);
 }
 
 /* =========================================
@@ -116,9 +120,9 @@ nav > p {
  ========================================= */
 .card {
   background-color: rgba(255, 255, 255, 0.33);
-  width: calc(100vw - 8rem);
-  padding: 2rem;
-  border-radius: 4rem;
+  width: calc((var(--simWidth) - 128) / var(--simWidth) * 100vw);
+  padding: calc(32 / var(--simWidth) * 100vw);
+  border-radius: calc(64 / var(--simWidth) * 100vw);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -131,14 +135,14 @@ nav > p {
 #main.card {
   position: relative;
   z-index: 2;
-  top: 0rem;
+  top: 0;
   transition: all 0.25s ease-in-out;
   will-change: transform;
 }
 
 #next.card {
   position: absolute;
-  top: -3rem;
+  top: calc(-48 / var(--simWidth) * 100vw);
   scale: 0.9;
   z-index: 1;
 }
@@ -148,25 +152,25 @@ nav > p {
 }
 
 .card > img {
-  width: calc(100vw - 8rem);
+  width: calc(312 / var(--simWidth) * 100vw);
   aspect-ratio: 1 / 1;
   object-fit: cover;
-  border-radius: 2rem;
-  margin-bottom: 1.5rem;
+  border-radius: calc(32 / var(--simWidth) * 100vw);
+  margin-bottom: calc(24 / var(--simWidth) * 100vw);
 }
 
 /* =========================================
  5. TYPOGRAPHY
  ========================================= */
 .title {
-  font-size: 2rem;
+  font-size: calc(32 / var(--simWidth) * 100vw);
   font-weight: 900;
   white-space: nowrap;
   overflow: hidden;
 }
 
 .artist {
-  font-size: 1.5rem;
+  font-size: calc(24 / var(--simWidth) * 100vw);
   font-weight: 300;
   color: #333;
   white-space: nowrap;
@@ -175,8 +179,8 @@ nav > p {
 }
 
 .details {
-  font-size: 1.5rem;
-  margin-bottom: 1.5rem;
+  font-size: calc(24 / var(--simWidth) * 100vw);
+  margin-bottom: calc(24 / var(--simWidth) * 100vw);
 }
 
 /* =========================================
@@ -185,11 +189,11 @@ nav > p {
 .playerContainer {
   display: flex;
   justify-content: center;
-  margin-bottom: 1rem;
+  margin-bottom: calc(16 / var(--simWidth) * 100vw);
 }
 
 .playerContainer > svg {
-  width: 4rem;
+  width: calc(64 / var(--simWidth) * 100vw);
   display: none;
 }
 
@@ -210,7 +214,7 @@ nav > p {
 
 .seekbarLabels > span {
   font-family: "SF Pro Mono";
-  font-size: 1rem;
+  font-size: calc(16 / var(--simWidth) * 100vw);
 }
 
 /* Volume Controls */
@@ -218,11 +222,11 @@ nav > p {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 0.75rem;
+  padding: 0 calc(8 / var(--simWidth) * 100vw);
 }
 
 .volumeContainer > svg {
-  width: 1.5rem;
+  width: calc(24 / var(--simWidth) * 100vw);
   stroke: #000;
 }
 
@@ -230,7 +234,7 @@ nav > p {
   accent-color: #000;
   background: transparent;
   width: -webkit-fill-available;
-  margin: 0 0.25rem;
+  margin: 0 calc(4 / var(--simWidth) * 100vw);
 }
 
 /* =========================================
@@ -240,23 +244,23 @@ input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 0.25rem;
+  height: calc(4 / var(--simWidth) * 100vw);
   background: #ccc;
-  border-radius: 0.125rem;
+  border-radius: calc(2 / var(--simWidth) * 100vw);
   outline: none;
   overflow: hidden;
 }
 
 /* WebKit (Chrome, Safari, Edge) */
 input[type="range"]::-webkit-slider-runnable-track {
-  height: 0.25rem;
+  height: calc(4 / var(--simWidth) * 100vw);
   background: #ccc;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 0.25rem;
-  height: 0.25rem;
+  width: calc(4 / var(--simWidth) * 100vw);
+  height: calc(4 / var(--simWidth) * 100vw);
   background: #000;
   border-radius: 50%;
   box-shadow: -100vw 0 0 100vw #000; /* filled progress */
@@ -265,18 +269,18 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* Firefox */
 input[type="range"]::-moz-range-track {
-  height: 0.25rem;
+  height: calc(4 / var(--simWidth) * 100vw);
   background: #333;
 }
 
 input[type="range"]::-moz-range-progress {
-  height: 0.25rem;
+  height: calc(4 / var(--simWidth) * 100vw);
   background: #000;
 }
 
 input[type="range"]::-moz-range-thumb {
-  width: 0.25rem;
-  height: 0.25rem;
+  width: calc(4 / var(--simWidth) * 100vw);
+  height: calc(4 / var(--simWidth) * 100vw);
   background: #000;
   border: none;
   border-radius: 50%;
@@ -290,30 +294,30 @@ input[type="range"]::-moz-range-thumb {
 #install-btn {
   display: none;
   position: relative;
-  margin: 0.5rem auto 0;
+  margin: calc(8 / var(--simWidth) * 100vw) auto 0;
   top: 0;
-  padding: 0.5rem 0.75rem;
+  padding: calc(8 / var(--simWidth) * 100vw) calc(12 / var(--simWidth) * 100vw);
   border: none;
-  border-radius: 1rem;
+  border-radius: calc(16 / var(--simWidth) * 100vw);
   background-color: #333;
   color: #fff;
 }
 
 /* Bottom Buttons (Like / Dislike Pair) */
 .bottom-btns {
-  width: calc(100vw - 4rem);
+  width: calc(376 / var(--simWidth) * 100vw);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 2rem;
-  gap: 2rem;
+  padding-bottom: calc(32 / var(--simWidth) * 100vw);
+  gap: calc(32 / var(--simWidth) * 100vw);
 }
 
 #dislike-btn,
 #like-btn {
   width: 50%;
-  border-radius: 4rem;
-  padding: 1.5rem 2rem;
+  border-radius: calc(64 / var(--simWidth) * 100vw);
+  padding: calc(24 / var(--simWidth) * 100vw) calc(32 / var(--simWidth) * 100vw);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -343,12 +347,12 @@ input[type="range"]::-moz-range-thumb {
 /* Icons & Text inside bottom buttons */
 #dislike-btn > svg,
 #like-btn > svg {
-  width: 2rem;
+  width: calc(32 / var(--simWidth) * 100vw);
 }
 
 #dislike-btn > p,
 #like-btn > p {
-  font-size: 1.5rem;
+  font-size: calc(24 / var(--simWidth) * 100vw);
   font-weight: 500;
 }
 
@@ -364,14 +368,14 @@ input[type="range"]::-moz-range-thumb {
 .marquee__inner {
   display: inline-flex;
   align-items: center;
-  gap: 4rem;
+  gap: calc(64 / var(--simWidth) * 100vw);
   will-change: transform;
   animation: marquee-scroll 12s linear infinite;
 }
 
 .marquee__inner > span {
   white-space: nowrap;
-  font-size: 2rem;
+  font-size: calc(32 / var(--simWidth) * 100vw);
   font-weight: 900;
   font-family: "SF Pro Display";
 }
@@ -389,7 +393,7 @@ input[type="range"]::-moz-range-thumb {
  10. BROWSER-SPECIFIC FIXES (Old Edge / IE)
  ========================================= */
 input[type="range"]::-ms-track {
-  height: 0.25rem;
+  height: calc(4 / var(--simWidth) * 100vw);
   background: transparent;
   border-color: transparent;
   color: transparent;
@@ -404,8 +408,8 @@ input[type="range"]::-ms-fill-upper {
 }
 
 input[type="range"]::-ms-thumb {
-  width: 0.25rem;
-  height: 0.25rem;
+  width: calc(4 / var(--simWidth) * 100vw);
+  height: calc(4 / var(--simWidth) * 100vw);
   background: #000;
   border-radius: 50%;
   cursor: pointer;
