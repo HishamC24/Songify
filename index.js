@@ -272,6 +272,26 @@ function setupAudioPlayerListeners() {
 // Initial setup
 setupAudioPlayerListeners();
 
+function lockCardsHeightOnceLoaded(mainEl = null, nextEl = null) {
+    const cardsContainer = document.getElementById("cards");
+
+    if (cardsContainer.dataset.locked === "true") return;
+
+    mainEl ||= document.getElementById("main");
+    nextEl ||= document.getElementById("next");
+
+    if (!mainEl || !nextEl) return;
+
+    requestAnimationFrame(() => {
+        const maxHeight = Math.max(mainEl.offsetHeight, nextEl.offsetHeight);
+        cardsContainer.style.height = `${maxHeight}px`;
+        cardsContainer.style.position = "relative";
+        cardsContainer.dataset.locked = "true";
+        if (debug) console.log(`Cards height locked at ${maxHeight}px`);
+    });
+}
+
+
 
 // =========================
 // ====== SONG SWITCH ======
@@ -283,6 +303,7 @@ let nextSong = requestSong();
 
 fetchAndDisplaySong(currentSong, "main");
 fetchAndDisplaySong(nextSong, "next");
+lockCardsHeightOnceLoaded();
 
 let nextCardHTML = `
       <div class="card" id="next">
@@ -347,17 +368,18 @@ async function handleSongSwitch(onSongAction) {
     }
 
     if (nextCard) {
+        // nextCard.style.zIndex = "2";
         nextCard.id = "main";
-        if (debug) console.log("Next card renamed to main");
     }
 
     currentSong = nextSong;
 
-    await delay(200);
+    // await delay(200);
     await fetchAndDisplaySong(currentSong, "main");
     if (debug) console.log("Song fetched and displayed");
 
     const newMainCard = document.getElementById("main");
+
     if (newMainCard) {
         newMainCard.insertAdjacentHTML("beforebegin", nextCardHTML);
     } else {
@@ -373,6 +395,7 @@ async function handleSongSwitch(onSongAction) {
     refreshAudioPlayerElements();
     setupAudioPlayerListeners();
     attachIOSRangeHandlers();
+
     // --- NEW BLOCK: Auto-play logic for new card ---
     if (mainCardPlaying && mainAudio) {
         // Ensure play button triggers (if not already playing)
@@ -512,7 +535,7 @@ attachIOSRangeHandlers();
     const minThresholdPx = 120;
 
     function setCardTransition(card, on) {
-        card.style.transition = on ? 'transform 0.32s cubic-bezier(.7,-0.3,.4,1.16)' : 'none';
+        card.style.transition = on ? 'transform 0.25s ease-in-out' : 'none';
     }
     function setCardX(card, x) {
         // max rotation (deg)
@@ -538,7 +561,6 @@ attachIOSRangeHandlers();
             const off = (lastX > 0) ? window.innerWidth : -window.innerWidth;
             setCardX(mainCard, off);
             const handler = () => {
-                mainCard.removeEventListener('transitionend', handler);
                 if (lastX > 0) {
                     handleSongSwitch(likeSong);
                 } else {
