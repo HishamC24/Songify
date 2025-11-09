@@ -112,7 +112,7 @@ nav > p {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: calc(32px / var(--simWidth) * 100vw);
+  margin-top: calc(32 / var(--simWidth) * 100vw);
 }
 
 /* =========================================
