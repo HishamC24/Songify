@@ -300,7 +300,7 @@ fetchAndDisplaySong(nextSong, "next");
 lockCardsHeightOnceLoaded();
 
 let nextCardHTML = `
-      <div class="card" id="next">
+      <div class="card" id="next" style="opacity: 0;">
         <img />
         <div class="explicitcy">
           <p class="title">Loading...</p>
@@ -406,6 +406,9 @@ async function handleSongSwitch(onSongAction) {
     refreshAudioPlayerElements();
     setupAudioPlayerListeners();
     attachIOSRangeHandlers();
+
+    // nextCard.style.opacity = ""; // this doesnt work since what the new "next" is doesnt get updated
+    document.getElementById("next").style.opacity = "";
 
     if (mainCardPlaying && mainAudio) {
         mainAudio.currentTime = 0;

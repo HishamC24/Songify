@@ -44,6 +44,7 @@
 :root {
   --simWidth: 440;
 }
+
 * {
   font-family: "SF Pro Display";
   font-weight: 300;
@@ -67,6 +68,9 @@ nav {
   align-items: center;
   width: calc(376 / var(--simWidth) * 100vw);
   margin: calc(32 / var(--simWidth) * 100vw);
+  /* border-radius: 2.5rem; */
+  /* backdrop-filter: blur(0.5rem); */
+  /* -webkit-backdrop-filter: blur(0.5rem); */
   z-index: 1000;
 }
 
@@ -145,6 +149,7 @@ nav > p {
   top: calc(-48 / var(--simWidth) * 100vw);
   scale: 0.9;
   z-index: 1;
+  transition: all 0.25s ease-in-out;
 }
 
 .card > * {
