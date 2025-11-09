@@ -12,8 +12,8 @@ export let songs = [
   "Can't Hold Us - Macklemore",
   "GTA 2 - Rarin",
   "Assumptions - Sam Gellaitry",
-  "Levitating - Dua Lipa",
-  "Loyal - Odesza",
+  "Levitating Dua Lipa",
+  "Loyal Odesza",
   "How Long - Charlie Puth",
   "Hyperspace - Sam I"
 ];

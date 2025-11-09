@@ -26,7 +26,6 @@ function checkInstallState() {
     if (isStandalone) hideInstallButton();
 }
 
-// Initial check
 checkInstallState();
 
 window.addEventListener("beforeinstallprompt", (e) => {
@@ -88,7 +87,6 @@ async function fetchAndDisplaySong(songName, divID) {
             return;
         }
 
-        // Store the full song object for vector updates
         if (divID === "main") window.currentSongObject = song;
 
         const img = card.querySelector("img");
@@ -97,20 +95,17 @@ async function fetchAndDisplaySong(songName, divID) {
         const explicitElem = card.querySelector(".explicitcy");
         const detailsElem = card.querySelector(".details");
 
-        // Update image
         if (img) {
             img.src = song.artworkUrl100.replace("100x100", "1500x1500");
             img.alt = `${song.trackName} by ${song.artistName}`;
         }
 
-        // Title and artist
         if (titleElem) {
             titleElem.textContent = song.trackName;
             applyTitleMarqueeIfNeeded(titleElem);
         }
         if (artistElem) artistElem.textContent = song.artistName;
 
-        // Explicit label
         if (explicitElem) {
             explicitElem.querySelectorAll(".explicit-marker").forEach((el) => el.remove());
             if (song.trackExplicitness === "explicit") {
@@ -121,7 +116,6 @@ async function fetchAndDisplaySong(songName, divID) {
             }
         }
 
-        // Genre + release
         if (detailsElem) {
             detailsElem.innerHTML = `
           Genre: ${song.primaryGenreName || ""}<br>
@@ -129,7 +123,6 @@ async function fetchAndDisplaySong(songName, divID) {
         `;
         }
 
-        // Audio setup for main card
         if (divID === "main") setupMainAudio(song.previewUrl);
     } catch (err) {
         console.error("Error fetching data:", err);
@@ -153,7 +146,6 @@ let seekbar = document.querySelector("#main .seekbar");
 let currentTimeLabel = document.querySelector("#main .currentTimeLabel");
 let durationLabel = document.querySelector("#main .durationLabel");
 
-// Function to refresh audio player element references
 function refreshAudioPlayerElements() {
     playBtn = document.querySelector("#main .play");
     pauseBtn = document.querySelector("#main .pause");
@@ -221,7 +213,6 @@ function setupAudioEndedHandler(audio) {
     audio.addEventListener("ended", resetAudio);
 }
 
-// Function to set up audio player event listeners
 function setupAudioPlayerListeners() {
     if (playBtn && !playBtn._listenerAttached) {
         playBtn.addEventListener("click", () => {
@@ -248,28 +239,18 @@ function setupAudioPlayerListeners() {
     if (seekbar && !seekbar._listenerAttached) {
         seekbar.addEventListener("input", () => {
             if (!mainAudio) return;
-            // Update time label live while dragging
             currentTimeLabel.textContent = formatTime(seekbar.value);
         });
 
         seekbar.addEventListener("change", () => {
             if (!mainAudio) return;
 
-            // Jump to new time when released or tapped
             mainAudio.currentTime = seekbar.value;
-
-            // Resume playback if paused and user interacted
-            if (mainAudio.paused && mainPreviewUrl) {
-                mainAudio.play();
-                playBtn.style.display = "none";
-                pauseBtn.style.display = "inline";
-            }
         });
         seekbar._listenerAttached = true;
     }
 }
 
-// Initial setup
 setupAudioPlayerListeners();
 
 function lockCardsHeightOnceLoaded(mainEl = null, nextEl = null) {
@@ -282,13 +263,13 @@ function lockCardsHeightOnceLoaded(mainEl = null, nextEl = null) {
 
     if (!mainEl || !nextEl) return;
 
-    requestAnimationFrame(() => {
-        const maxHeight = Math.max(mainEl.offsetHeight, nextEl.offsetHeight);
-        cardsContainer.style.height = `${maxHeight}px`;
-        cardsContainer.style.position = "relative";
-        cardsContainer.dataset.locked = "true";
-        if (debug) console.log(`Cards height locked at ${maxHeight}px`);
-    });
+    // requestAnimationFrame(() => {
+    //     const maxHeight = Math.max(mainEl.offsetHeight, nextEl.offsetHeight);
+    //     cardsContainer.style.height = `${maxHeight}px`;
+    //     cardsContainer.style.position = "relative";
+    //     cardsContainer.dataset.locked = "true";
+    //     if (debug) console.log(`Cards height locked at ${maxHeight}px`);
+    // });
 }
 
 
@@ -355,6 +336,25 @@ function delay(ms) {
 
 let mainCardPlaying = false;
 
+async function animateSwipe(direction, callback) {
+    const mainCard = document.getElementById("main");
+    if (!mainCard) {
+        if (typeof callback === "function") callback();
+        return;
+    }
+    const off = (direction === "right" ? 1 : -1) * window.innerWidth;
+    mainCard.style.transition = 'transform 0.25s ease-in-out';
+    const maxAngle = 12;
+    const angle = direction === "right" ? maxAngle : -maxAngle;
+    mainCard.style.transform = `translateX(${off}px) rotate(${angle}deg)`;
+
+    function cleanupAndCallback() {
+        mainCard.removeEventListener('transitionend', cleanupAndCallback);
+        if (typeof callback === "function") callback();
+    }
+    mainCard.addEventListener('transitionend', cleanupAndCallback);
+}
+
 async function handleSongSwitch(onSongAction) {
     if (typeof onSongAction === "function") onSongAction(currentSongJson);
 
@@ -368,13 +368,11 @@ async function handleSongSwitch(onSongAction) {
     }
 
     if (nextCard) {
-        // nextCard.style.zIndex = "2";
         nextCard.id = "main";
     }
 
     currentSong = nextSong;
 
-    // await delay(200);
     await fetchAndDisplaySong(currentSong, "main");
     if (debug) console.log("Song fetched and displayed");
 
@@ -396,9 +394,7 @@ async function handleSongSwitch(onSongAction) {
     setupAudioPlayerListeners();
     attachIOSRangeHandlers();
 
-    // --- NEW BLOCK: Auto-play logic for new card ---
     if (mainCardPlaying && mainAudio) {
-        // Ensure play button triggers (if not already playing)
         mainAudio.currentTime = 0;
         mainAudio.play();
         if (playBtn && pauseBtn) {
@@ -408,18 +404,17 @@ async function handleSongSwitch(onSongAction) {
     }
 }
 
-// Assign once for gesture IIFE only
 window.handleSongSwitch = handleSongSwitch;
+window.animateSwipe = animateSwipe;
 
-// === Event listeners now use the song object only ===
 document.getElementById("dislike-btn").addEventListener("click", () => {
     if (!window.currentSongObject) return console.warn("⚠️ No current song object yet!");
-    handleSongSwitch(dislikeSong);
+    animateSwipe("left", () => handleSongSwitch(dislikeSong));
 });
 
 document.getElementById("like-btn").addEventListener("click", () => {
     if (!window.currentSongObject) return console.warn("⚠️ No current song object yet!");
-    handleSongSwitch(likeSong);
+    animateSwipe("right", () => handleSongSwitch(likeSong));
 });
 
 // =========================
@@ -459,7 +454,7 @@ function applyTitleMarqueeIfNeeded(el) {
 
             const anim = inner.style.animation;
             inner.style.animation = "none";
-            inner.offsetHeight; // force reflow
+            inner.offsetHeight;
             inner.style.animation = anim;
         };
 
@@ -503,7 +498,6 @@ function iosRangeTouchHandler(e) {
     e.preventDefault();
 }
 
-// Function to attach iOS range handlers to range inputs
 function attachIOSRangeHandlers() {
     if (/iPhone|iPad|iPod/.test(navigator.platform)) {
         document.querySelectorAll('input[type="range"]').forEach((slider) => {
@@ -516,7 +510,6 @@ function attachIOSRangeHandlers() {
     }
 }
 
-// Initial attachment
 attachIOSRangeHandlers();
 
 // ===========
@@ -538,10 +531,8 @@ attachIOSRangeHandlers();
         card.style.transition = on ? 'transform 0.25s ease-in-out' : 'none';
     }
     function setCardX(card, x) {
-        // max rotation (deg)
         const maxAngle = 12;
         if (card) {
-            // Clamp angle proportional to x, max +-maxAngle at window width
             const angle = Math.max(-maxAngle, Math.min(maxAngle, (x / window.innerWidth) * maxAngle));
             card.style.transform = `translateX(${x}px) rotate(${angle}deg)`;
         }
@@ -550,7 +541,7 @@ attachIOSRangeHandlers();
     function resetCard() {
         if (!mainCard) return;
         setCardTransition(mainCard, true);
-        setCardX(mainCard, 0); // angle will also reset to 0deg
+        setCardX(mainCard, 0);
     }
 
     function handleRelease() {
@@ -599,7 +590,7 @@ attachIOSRangeHandlers();
         lastX = dx;
         setCardTransition(mainCard, false);
         setCardX(mainCard, dx);
-        e.preventDefault(); // Prevents vertical scroll when dragging
+        e.preventDefault();
     }
 
     function onTouchEnd(e) {
@@ -625,7 +616,6 @@ attachIOSRangeHandlers();
         mainCard.addEventListener('touchcancel', onTouchEnd);
     }
 
-    // Observe for replacing main card
     const observer = new MutationObserver(() => {
         attach();
     });

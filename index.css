@@ -55,11 +55,46 @@
 
 body {
   background-color: black;
+}
+
+nav {
+  position: fixed;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: calc(100vw - (2 * 2rem));
+  margin: 2rem;
+}
+
+nav > p {
+  color: #fff;
+  font-weight: 900;
+  font-size: 2.5rem;
+  /* padding-left: 0.5rem; */
+}
+
+#menu {
+  background-color: rgba(0, 128, 255, 0.5);
+  padding: 0.75rem;
+  border-radius: 2.5rem;
+  display: flex;
+  transition: all 0.1s ease-in-out;
+}
+
+#menu:active {
+  background-color: rgba(0, 128, 255, 0.75);
+}
+
+#menu > svg {
+  width: 1.75rem;
+}
+
+#body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  margin: 2rem 0;
+  justify-content: flex-end;
+  min-height: 100dvh;
   gap: 2rem;
 }
 
@@ -267,6 +302,7 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-bottom: 2rem;
   gap: 2rem;
 }
 
