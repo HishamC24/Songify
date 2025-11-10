@@ -1,6 +1,6 @@
-// =========================
-// ===== PWA INSTALL =======
-// =========================
+// =============================
+// =======  PWA INSTALL  =======
+// =============================
 
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js");
@@ -48,9 +48,9 @@ window.addEventListener("appinstalled", () => {
     deferredPrompt = null;
 });
 
-// =========================
-// ===== SONG FETCHING =====
-// =========================
+// =============================
+// ======= SONG FETCHING  ======
+// =============================
 
 import { songs, requestSong, dislikeSong, likeSong } from "./backend.js";
 import { debug } from "./globalSettings.js";
@@ -136,9 +136,9 @@ function handleNoSong(divID) {
     resetAudio();
 }
 
-// =========================
-// ===== AUDIO PLAYER ======
-// =========================
+// =============================
+// ======= AUDIO PLAYER  =======
+// =============================
 
 let playBtn = document.querySelector("#main .play");
 let pauseBtn = document.querySelector("#main .pause");
@@ -163,7 +163,6 @@ function formatTime(seconds) {
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-// When mainAudio ends, loop it by replaying
 function setupMainAudio(previewUrl) {
     if (mainAudio) mainAudio.pause();
     mainPreviewUrl = previewUrl || null;
@@ -210,15 +209,12 @@ function setupAudioProgressTracking(audio) {
     });
 }
 
-// Instead of just resetting, loop the audio when it ends
 function setupAudioEndedHandler(audio) {
     audio.addEventListener("ended", () => {
-        // Loop the song: restart from the beginning and play again
         if (audio.currentTime !== 0) audio.currentTime = 0;
         if (!audio.paused) {
             audio.play();
         } else {
-            // Optionally, auto-start only if the UI considers it 'playing'
             if (mainCardPlaying && mainAudio === audio) {
                 audio.play();
             }
@@ -287,9 +283,9 @@ function lockCardsHeightOnceLoaded(mainEl = null, nextEl = null) {
 
 
 
-// =========================
-// ====== SONG SWITCH ======
-// =========================
+// =============================
+// =======  SONG SWITCH   ======
+// =============================
 
 let currentSong = requestSong();
 let currentSongJson = {};
@@ -343,9 +339,33 @@ let nextCardHTML = `
         </div>
       </div>
 `
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+
+const dislikeIcon = `
+<div class="dislikePopup iconPopup">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path
+            d="M13 21.008a3 3 0 0 0 2.995 -2.823l.005 -.177v-4h2a3 3 0 0 0 2.98 -2.65l.015 -.173l.005 -.177l-.02 -.196l-1.006 -5.032c-.381 -1.625 -1.502 -2.796 -2.81 -2.78l-.164 .008h-8a1 1 0 0 0 -.993 .884l-.007 .116l.001 9.536a1 1 0 0 0 .5 .866a2.998 2.998 0 0 1 1.492 2.396l.007 .202v1a3 3 0 0 0 3 3z"
+        />
+        <path
+            d="M5 14.008a1 1 0 0 0 .993 -.883l.007 -.117v-9a1 1 0 0 0 -.883 -.993l-.117 -.007h-1a2 2 0 0 0 -1.995 1.852l-.005 .15v7a2 2 0 0 0 1.85 1.994l.15 .005h1z"
+        />
+    </svg>
+</div>
+`
+const likeIcon = `
+<div class="likePopup iconPopup">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path
+            d="M13 3a3 3 0 0 1 2.995 2.824l.005 .176v4h2a3 3 0 0 1 2.98 2.65l.015 .174l.005 .176l-.02 .196l-1.006 5.032c-.381 1.626 -1.502 2.796 -2.81 2.78l-.164 -.008h-8a1 1 0 0 1 -.993 -.883l-.007 -.117l.001 -9.536a1 1 0 0 1 .5 -.865a2.998 2.998 0 0 0 1.492 -2.397l.007 -.202v-1a3 3 0 0 1 3 -3z"
+        />
+        <path
+            d="M5 10a1 1 0 0 1 .993 .883l.007 .117v9a1 1 0 0 1 -.883 .993l-.117 .007h-1a2 2 0 0 1 -1.995 -1.85l-.005 -.15v-7a2 2 0 0 1 1.85 -1.995l.15 -.005h1z"
+        />
+    </svg>
+</div>
+`
 
 let mainCardPlaying = false;
 
@@ -370,6 +390,14 @@ async function animateSwipe(direction, callback) {
 
 async function handleSongSwitch(onSongAction) {
     if (typeof onSongAction === "function") onSongAction(currentSongJson);
+
+    document.querySelectorAll(".iconPopup").forEach(popup => {
+        popup.style.opacity = "0";
+        popup.addEventListener("transitionend", function handler() {
+            popup.removeEventListener("transitionend", handler);
+            popup.remove();
+        });
+    });
 
     const cardsContainer = document.getElementById("cards");
     const mainCard = document.getElementById("main");
@@ -420,19 +448,6 @@ async function handleSongSwitch(onSongAction) {
     }
 }
 
-// --- BORDER RADIUS SMOOTHING ON RESIZE ---
-window.addEventListener("resize", () => {
-    if (typeof window.applySquircles === "function") {
-        window.applySquircles();
-    }
-});
-window.addEventListener("orientationchange", () => {
-    if (typeof window.applySquircles === "function") {
-        window.applySquircles();
-    }
-});
-// -----------------------------------------
-
 window.handleSongSwitch = handleSongSwitch;
 window.animateSwipe = animateSwipe;
 
@@ -446,9 +461,9 @@ document.getElementById("like-btn").addEventListener("click", () => {
     animateSwipe("right", () => handleSongSwitch(likeSong));
 });
 
-// =========================
-// ===== TITLE MARQUEE =====
-// =========================
+// =============================
+// =======  TITLE MARQUEE ======
+// =============================
 
 function applyTitleMarqueeIfNeeded(el) {
     requestAnimationFrame(() => {
@@ -498,9 +513,9 @@ function applyTitleMarqueeIfNeeded(el) {
     });
 }
 
-// ================================
-// ===== iOS RANGE FIX HANDLER ====
-// ================================
+// =============================
+// ===== iOS RANGE FIX HANDLER =
+// =============================
 
 function iosRangeTouchHandler(e) {
     if (e.touches.length > 1) return;
@@ -541,9 +556,9 @@ function attachIOSRangeHandlers() {
 
 attachIOSRangeHandlers();
 
-// ===========
-// CARD DRAG MOBILE GESTURE FOR #main
-// ===========
+// =============================
+// == CARD DRAG MOBILE GESTURE =
+// =============================
 
 (function setupMainCardDrag() {
     let mainCard = document.getElementById("main");
@@ -559,19 +574,41 @@ attachIOSRangeHandlers();
     function setCardTransition(card, on) {
         card.style.transition = on ? 'transform 0.25s ease-in-out' : 'none';
     }
+
     function setCardX(card, x) {
         const maxAngle = 12;
-        if (card) {
-            const angle = Math.max(-maxAngle, Math.min(maxAngle, (x / window.innerWidth) * maxAngle));
-            card.style.transform = `translateX(${x}px) rotate(${angle}deg)`;
+        const percentSwiped = Math.abs(x) / window.innerWidth * 4;
+        let iconLocation = document.getElementById("body");
+        let iconPopup = iconLocation.querySelector(".iconPopup");
+
+        if (x === 0 && iconPopup) {
+            iconPopup.remove();
         }
+
+        if (x !== 0) {
+            if (iconPopup) iconPopup.remove();
+            if (x > 0) {
+                iconLocation.insertAdjacentHTML("beforeend", likeIcon);
+                let likeIconElement = document.getElementById("main").querySelector(".dislikePopup");
+                iconLocation.querySelector(".likePopup").style.opacity = percentSwiped;
+            }
+            else {
+                iconLocation.insertAdjacentHTML("beforeend", dislikeIcon);
+                let dislikeIconElement = document.getElementById("main").querySelector(".likePopup");
+                iconLocation.querySelector(".dislikePopup").style.opacity = percentSwiped;
+            }
+        }
+
+        const angle = Math.max(-maxAngle, Math.min(maxAngle, (x / window.innerWidth) * maxAngle));
+        card.style.transform = `translateX(${x}px) rotate(${angle}deg)`;
     }
 
-    function resetCard() {
-        if (!mainCard) return;
-        setCardTransition(mainCard, true);
-        setCardX(mainCard, 0);
-    }
+
+    // function resetCard() {
+    //     if (!mainCard) return;
+    //     setCardTransition(mainCard, true);
+    //     setCardX(mainCard, 0);
+    // }
 
     function handleRelease() {
         if (!mainCard) return;
@@ -655,3 +692,22 @@ attachIOSRangeHandlers();
     attach();
     observeTarget();
 })();
+
+// =============================
+// =======  BORDER RADIUS ======
+// =============================
+
+const rerunApplySquircles = () => {
+    if (typeof window.applySquircles === "function") {
+        window.applySquircles();
+    }
+};
+["resize", "orientationchange", "DOMContentLoaded", "load", "transitionend", "animationend"].forEach(evt => {
+    window.addEventListener(evt, rerunApplySquircles, true);
+});
+(new MutationObserver(rerunApplySquircles)).observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["style", "class"]
+});
