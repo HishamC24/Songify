@@ -420,6 +420,19 @@ async function handleSongSwitch(onSongAction) {
     }
 }
 
+// --- BORDER RADIUS SMOOTHING ON RESIZE ---
+window.addEventListener("resize", () => {
+    if (typeof window.applySquircles === "function") {
+        window.applySquircles();
+    }
+});
+window.addEventListener("orientationchange", () => {
+    if (typeof window.applySquircles === "function") {
+        window.applySquircles();
+    }
+});
+// -----------------------------------------
+
 window.handleSongSwitch = handleSongSwitch;
 window.animateSwipe = animateSwipe;
 
