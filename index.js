@@ -369,6 +369,26 @@ const likeIcon = `
 
 let mainCardPlaying = false;
 
+function showSwipePopup(type) {
+    const existing = document.querySelector(".iconPopup");
+    if (existing) existing.remove();
+
+    const popupHTML = type === "like" ? likeIcon : dislikeIcon;
+    document.body.insertAdjacentHTML("beforeend", popupHTML);
+
+    const popup = document.querySelector(`.${type}Popup`);
+    if (!popup) return;
+
+    popup.style.opacity = "1";
+    popup.style.transition = "opacity 0.4s ease";
+
+    // Fade out after a short delay
+    setTimeout(() => {
+        popup.style.opacity = "0";
+        popup.addEventListener("transitionend", () => popup.remove());
+    }, 500);
+}
+
 async function animateSwipe(direction, callback) {
     const mainCard = document.getElementById("main");
     if (!mainCard) {
@@ -453,11 +473,13 @@ window.animateSwipe = animateSwipe;
 
 document.getElementById("dislike-btn").addEventListener("click", () => {
     if (!window.currentSongObject) return console.warn("⚠️ No current song object yet!");
+    showSwipePopup("dislike");
     animateSwipe("left", () => handleSongSwitch(dislikeSong));
 });
 
 document.getElementById("like-btn").addEventListener("click", () => {
     if (!window.currentSongObject) return console.warn("⚠️ No current song object yet!");
+    showSwipePopup("like");
     animateSwipe("right", () => handleSongSwitch(likeSong));
 });
 
