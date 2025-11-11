@@ -69,19 +69,68 @@ function computeEnergy(song) {
 
 // Logarithmic-like easing: growth slows as value approaches 1
 function logGrow(current, delta, rate = 1.0) {
-  const next = current + delta * rate * (1 - Math.log1p(current));
+  // Damping decreases as value approaches edges (0 or 1)
+  // and stays strongest near the middle (0.5)
+  const damping = 1 - Math.pow(Math.abs(current - 0.5) * 2, 2);
+  const next = current + delta * rate * damping;
   return clamp(next, 0.0001, 0.9999);
 }
 
 
+// these weights act as strenght multipliers for each signal
+// so explicit interactions > implicit interactions
+// Ex: likes weights > listen% rates
 const signalWeights = {
-  like: { genre: +0.015, energy: +0.010, popularity: +0.008, explicit: +0.006, era: +0.004, variety: -0.002 },
-  dislike: { genre: -0.012, energy: -0.010, popularity: -0.008, explicit: -0.006, era: -0.004, variety: +0.002 },
-  listen: { genre: +0.004, energy: +0.012, popularity: +0.004, explicit: 0.000, era: +0.006, variety: +0.002 },
-  replay: { genre: +0.006, energy: +0.004, popularity: +0.002, explicit: 0.000, era: +0.010, variety: -0.004 },
-  share: { genre: +0.006, energy: +0.006, popularity: +0.012, explicit: +0.004, era: +0.006, variety: +0.008 },
-  favorite: { genre: +0.010, energy: +0.008, popularity: +0.006, explicit: +0.012, era: +0.006, variety: -0.004 }
+  like: {
+    genre: 0.08,      // strong push toward that genre
+    energy: 0.05,     // user likes this energy level
+    popularity: 0.03, // slightly more tolerance for popular sound
+    explicit: 0.03,   // tolerance for explicit content increases
+    era: 0.05,        // bias toward modern/recency
+    variety: -0.02     // liking reduces need for variety
+  },
+  dislike: {
+    genre: 0.12,      // push away faster from disliked genre
+    energy: 0.08,
+    popularity: 0.05,
+    explicit: 0.05,
+    era: 0.04,
+    variety: 0.06     // dislike increases openness to variety
+  },
+  listen: {
+    genre: 0.02,      // gentle reinforcement
+    energy: 0.015,
+    popularity: 0.015,
+    explicit: 0.02,
+    era: 0.015,
+    variety: 0.005
+  },
+  replay: {
+    genre: 0.06,      // replay = strong reinforcement
+    energy: 0.05,
+    popularity: 0.03,
+    explicit: 0.025,
+    era: 0.07,
+    variety: -0.04
+  },
+  share: {
+    genre: 0.04,      // sharing shows confidence
+    energy: 0.03,
+    popularity: 0.09, // heavier push toward mainstream
+    explicit: 0.04,
+    era: 0.05,
+    variety: 0.01
+  },
+  favorite: {
+    genre: 0.10,
+    energy: 0.06,
+    popularity: 0.04,
+    explicit: 0.07,
+    era: 0.06,
+    variety: -0.05
+  }
 };
+
 
 
 
@@ -99,7 +148,7 @@ export function updateTasteProfile(song, feedback = {}) {
 
   if (debug) console.log("🎧 Using currentSongData for:", song.trackName, "-", song.artistName);
 
-  const lr = 0.02; // learning rate
+  const lr = 0.15; // learning rate
 
   // turn the feedback flags into a simple list of active signals
   const activeSignals = Object.entries(feedback).filter(([_, v]) => v);
@@ -132,22 +181,37 @@ export function updateTasteProfile(song, feedback = {}) {
     if (!w) continue;
     const mult = typeof sigValue === "number" ? sigValue / 100 : 1;
 
-    // --- update 11-dimensional genre vector ---
-    for (let i = 0; i < genres.length; i++) {
-      const influence = (i === gIndex ? 1.0 : 0.15);
-      const delta = lr * w.genre * mult * influence;
-      tasteProfile.genreIdentity[i] = logGrow(tasteProfile.genreIdentity[i], delta);
-    }
+// --- update single genre weight only ---
+if (gIndex !== -1) { // make sure the song’s genre was recognized
+  const direction = feedback.like ? 1 : feedback.dislike ? -1 : 0;
 
-    // --- update scalar components ---
-    // --- Update scalar components safely ---
-    tasteProfile.energyPreference = logGrow(tasteProfile.energyPreference, lr * w.energy * mult * (energy - 0.5));
-    tasteProfile.popularityBias = logGrow(tasteProfile.popularityBias, lr * w.popularity * mult * (popularity - 0.5));
-    tasteProfile.explicitnessTolerance = logGrow(tasteProfile.explicitnessTolerance, lr * w.explicit * mult * (explicit - 0.5));
-    tasteProfile.eraPreference = logGrow(tasteProfile.eraPreference, lr * w.era * mult * (recentness - 0.5));
-    tasteProfile.artistVariety = logGrow(tasteProfile.artistVariety, lr * w.variety * mult);
+  // movement size
+  const delta = lr * w.genre * direction;
 
+  // apply only to the one matching genre
+  tasteProfile.genreIdentity[gIndex] = clamp(
+    logGrow(tasteProfile.genreIdentity[gIndex], delta),
+    0,
+    1
+  );
+
+  // optional rounding for visibility
+  tasteProfile.genreIdentity[gIndex] = Number(tasteProfile.genreIdentity[gIndex].toFixed(3));
+
+  if (debug) {
+    console.log(`🎚️ Genre [${genres[gIndex]}] adjusted by ${delta.toFixed(4)} → ${tasteProfile.genreIdentity[gIndex]}`);
   }
+}
+
+
+  // --- Update scalar components safely ---
+  tasteProfile.energyPreference = logGrow(tasteProfile.energyPreference, lr * w.energy * mult * (energy - 0.5));
+  tasteProfile.popularityBias = logGrow(tasteProfile.popularityBias, lr * w.popularity * mult * (popularity - 0.5));
+  tasteProfile.explicitnessTolerance = logGrow(tasteProfile.explicitnessTolerance, lr * w.explicit * mult * (explicit - 0.5));
+  tasteProfile.eraPreference = logGrow(tasteProfile.eraPreference, lr * w.era * mult * (recentness - 0.5));
+  tasteProfile.artistVariety = logGrow(tasteProfile.artistVariety, lr * w.variety * mult);
+
+}
 
   saveTasteProfile();
   logVector();
@@ -167,7 +231,7 @@ export function updateTasteProfile(song, feedback = {}) {
 
 function saveTasteProfile() {
   localStorage.setItem("songify_tasteProfile", JSON.stringify(tasteProfile));
-  if (debug) console.log("💾 Taste profile saved to localStorage.");
+ // if (debug) console.log("💾 Taste profile saved to localStorage.");     // uncomment when it actually saves
 }
 
 function logVector() {
@@ -175,9 +239,15 @@ function logVector() {
     "pop", "hip-hop", "r&b", "rock", "indie",
     "country", "electronic", "jazz", "alternative", "dance", "classical"
   ];
-  const summary = genres.map((g, i) => `${g}:${tasteProfile.genreIdentity[i].toFixed(2)}`).join(" | ");
-  if (debug) console.log("🎚️ Genres:", summary);
+
+  const summary = genres
+    .map((g, i) => `${g}: ${tasteProfile.genreIdentity[i].toFixed(3)}`)
+    .join(" | ");
+
+  if (debug) console.log("🎚️", summary);
 }
+
+
 
 
 

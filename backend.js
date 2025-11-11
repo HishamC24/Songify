@@ -44,22 +44,43 @@ if (debug) console.log("👍 liked:", likedSongs, "👎 disliked:", dislikedSong
 // ==========================
 
 export function requestSong() {
-  // when theres 3 songs in the array, first have a song ready to return based off the top song of the stack
-  const returnSong = songs[0];
-  songs.shift();
-
-  // then in the queue, request a new Personalized Reccomended song with the ai
-  if (songs.length <= 3) {
-    // console.error("No songs left bby, enqueuing Rick Astley instead 🎤");
-    // return "Never Gonna Give You Up Rick Astley";
-    // songs.push("Never Gonna Give You Up Rick Astley");
-    // instead of pushing never gonna give you up, push the new AI requested song
-    songs.push(recommendSong());
+  // 🛡️ Safety: if queue empty, reseed
+  if (!songs || songs.length === 0) {
+    const fallback = "Levitating - Dua Lipa";
+    songs.push(fallback);
+    if (debug) console.warn("⚠️ Song queue was empty — reseeded with:", fallback);
   }
 
-  // after that, return fthe saved song from step 1
-  return returnSong;
+  // 🎧 Take the next ready song
+  const returnSong = songs.shift();
+
+  if (debug) {
+    console.log("🎵 requestSong() → returning:", returnSong);
+    console.log("📦 Remaining queue:", songs);
+  }
+
+  // Background refill if queue low
+  if (songs.length <= 3) {
+    if (debug) console.log("Queue low (<=3), requesting new AI song…");
+    recommendSong()
+      .then((newSong) => {
+        if (newSong && typeof newSong === "string") {
+          songs.push(newSong);
+          if (debug) console.log("🎶Queued new AI song:", newSong);
+          if (debug) console.log(" 📦 Queue after refill:", songs);
+        } else if (debug) {
+          console.warn("⚠️ AI returned invalid song:", newSong);
+        }
+      })
+      .catch((err) => console.error("⚠️ Failed to queue AI song:", err));
+  }
+
+  // ✅ Always return a usable song string
+  return returnSong || "Levitating - Dua Lipa";
 }
+
+
+
 
 
 // =============================
@@ -85,7 +106,6 @@ export async function dislikeSong(song) {
     const updated = await updateTasteProfile(song, { dislike: true });
     if (updated) {
       if (debug) console.log("🧭 Updated taste vector:", updated);
-      if (debug) console.log("🎚️ Genres:", updated.genreIdentity.map(v => v.toFixed(2)).join(" | "));
     }
   }
 }
@@ -109,7 +129,6 @@ export async function likeSong(song) {
     const updated = await updateTasteProfile(song, { like: true });
     if (updated) {
       if (debug) console.log("🧭 Updated taste vector:", updated);
-      if (debug) console.log("🎚️ Genres:", updated.genreIdentity.map(v => v.toFixed(2)).join(" | "));
     }
   }
 }

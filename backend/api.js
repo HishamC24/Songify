@@ -1,24 +1,24 @@
 /**
- * Songify backend – local + GitHub Pages version (OpenRouter.ai)
- * Works directly in browser, CORS-safe, no backend needed.
+ * Songify backend – OpenRouter single-model version
  */
+import { debug } from "../globalSettings.js";
 
-const OPENROUTER_API_KEY = "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"; // ⬅️ your key
+const OPENROUTER_API_KEY = "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"; // ⬅️ your key here
 const RECENT_HISTORY_LIMIT = 10;
 let recentSongs = [];
+let cachedMCP = null;
 
-// Example fallback songs
+// ======== Default fallback songs ========
 export let songs = [
   "Can't Hold Us - Macklemore",
   "GTA 2 - Rarin",
   "Assumptions - Sam Gellaitry",
-  "Levitating Dua Lipa",
-  "Loyal Odesza",
+  "Levitating - Dua Lipa",
+  "Loyal - ODESZA",
   "How Long - Charlie Puth",
-  "Hyperspace - Sam I"
 ];
 
-// Example taste vector
+// ======== Default vector example ========
 const tasteVector = {
   genreIdentity: [0.812, 0.327, 0.438, 0.701, 0.529, 0.243, 0.892, 0.115, 0.674, 0.801, 0.318],
   artistVariety: 0.713,
@@ -28,13 +28,20 @@ const tasteVector = {
   energyPreference: 0.883
 };
 
-// ────────────────────────────────────────────────
-//  Helper: build the AI prompt
-// ────────────────────────────────────────────────
-function buildPrompt(MCP, vector) {
-  let prompt = `
-${MCP.context.system_role}
+// ======== Helper to load MCP once ========
+async function getMCP() {
+  if (cachedMCP) return cachedMCP;
+  const res = await fetch("./backend/songify_mcp_v1.json");
+  cachedMCP = await res.json();
 
+  if(debug) console.log(`🧠 MCP loaded once: ${cachedMCP.name} v${cachedMCP.version}`);
+  
+  return cachedMCP;
+}
+
+// ======== Build the LLM prompt ========
+function buildPrompt(MCP, vector) {
+  return `
 ${MCP.context.instructions.join("\n")}
 
 Use this genre key mapping:
@@ -42,28 +49,41 @@ ${JSON.stringify(MCP.context.genre_key, null, 2)}
 
 Taste vector:
 ${JSON.stringify(vector, null, 2)}
+
+Avoid these songs (already suggested): ${recentSongs.join(", ")}
+
+Return ONLY a JSON array with one unique new song suggestion like:
+["Song - Artist"]
+Ensure it is not in the list above.
+Start with '[' and end with ']'. No markdown or prose.
 `;
-
-  // 🧠 Inject "Avoid these songs" clause if we have history
-  if (recentSongs.length > 0) {
-    prompt += `\nDo not pick from these songs: ${recentSongs.join(", ")}.\n`;
-  }
-
-  prompt += `
-Return ONLY a JSON array with ONE item like ["Song - Artist"].
-Start with '[' and end with ']'. No markdown or explanation.
-  `;
-
-  return prompt;
 }
 
-// ────────────────────────────────────────────────
-//  Main: call OpenRouter from browser
-// ────────────────────────────────────────────────
-export async function recommendSong(vector = tasteVector, retryCount = 0) {
+// ======== Parse AI output ========
+function parseResponse(text) {
   try {
-    const mcpResponse = await fetch("./backend/songify_mcp_v1.json");
-    const MCP = await mcpResponse.json();
+    const match = text.match(/\[.*?\]/s);
+    if (!match) {
+      if (debug) console.warn("⚠️ No JSON array found in output:", text);
+      return null;
+    }
+    const parsed = JSON.parse(match[0]);
+    if (Array.isArray(parsed) && typeof parsed[0] === "string") return parsed[0];
+    if (debug) console.warn("⚠️ Parsed but invalid format:", parsed);
+    return null;
+  } catch (err) {
+    if (debug) console.warn("⚠️ parseResponse() failed:", err, "Full text:", text);
+    return null;
+  }
+}
+
+// ======== Main recommendSong() ========
+export async function recommendSong(vector = tasteVector) {
+  const model = "meta-llama/llama-3.3-70b-instruct:free";
+
+  try {
+    const MCP = await getMCP();
+    
     const prompt = buildPrompt(MCP, vector);
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -75,53 +95,42 @@ export async function recommendSong(vector = tasteVector, retryCount = 0) {
         "X-Title": "Songify"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
-        temperature: 1.0, // slightly more creative
-        top_p: 0.95,
-        max_tokens: 100,
+        model,
+        temperature: 0.9,
+        max_tokens: 120,
         messages: [
-          { role: "system", content: MCP.context.system_role },
+          {
+            role: "system",
+            content:
+              MCP.context.system_role ||
+              "You are Songify, a music recommendation AI."
+          },
           { role: "user", content: prompt }
         ]
       })
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errText}`);
-    }
-
-    // Parse AI output safely
+    if (!response.ok) throw new Error(await response.text());
     const data = await response.json();
-    let text = data.choices?.[0]?.message?.content?.trim() || "";
-    const match = text.match(/\[[\s\S]*\]/);
-    if (match) text = match[0];
-    const parsed = JSON.parse(text);
+    const text = data.choices?.[0]?.message?.content?.trim() || "";
 
-    songs = parsed;
-    const song = songs[0];
+    const song = parseResponse(text);
+    if (!song) throw new Error("Invalid AI output format");
+
+    // Update local recent history
+    if (!recentSongs.includes(song)) {
+      recentSongs.push(song);
+      if (recentSongs.length > RECENT_HISTORY_LIMIT) recentSongs.shift();
+      if (debug) console.log("🕒 Updated recentSongs:", recentSongs);
+    }
+
     if (debug) console.log("🎧 Recommended song:", song);
-
-    // --- Prevent duplicates ---
-    if (recentSongs.includes(song) && retryCount < 3) {
-      console.warn(`⚠️ "${song}" already in recent history → rerolling (attempt ${retryCount + 1})`);
-      return await recommendSong(vector, retryCount + 1);
-    }
-
-    // --- Update history ---
-    recentSongs.push(song);
-    if (recentSongs.length > RECENT_HISTORY_LIMIT) {
-      recentSongs.shift(); // keep last 10
-    }
-
-    if (debug) console.log("🕒 Recent songs memory:", recentSongs);
     return song;
 
   } catch (err) {
-    console.error("⚠️ Error fetching songs from OpenRouter:", err);
+    if (debug) console.error("⚠️ OpenRouter error:", err);
     const fallback = songs[Math.floor(Math.random() * songs.length)];
-    if (debug) console.log("🎵 Returning fallback song:", fallback);
+    if (debug) console.log("🎵 Using fallback:", fallback);
     return fallback;
   }
 }
-

@@ -1,3 +1,7 @@
+import { updateTasteProfile } from "./backend/songify_logic.js";
+
+
+
 // =============================
 // =======  PWA INSTALL  =======
 // =============================
@@ -56,6 +60,11 @@ import { songs, requestSong, dislikeSong, likeSong } from "./backend.js";
 import { debug } from "./globalSettings.js";
 
 let mainAudio = null;
+
+// variables for tracking listen %
+let listenStartTime = null;
+let lastImportPercent = 0;
+
 let mainPreviewUrl = null;
 
 const formatDate = (dateStr) => {
@@ -80,7 +89,7 @@ async function fetchAndDisplaySong(songName, divID) {
 
         const song = results[0];
         currentSongJson = song;
-        if (debug) console.log(currentSong);
+        if (debug) console.log(song.trackName, "-", song.artistName);
         const card = document.getElementById(divID);
         if (!card) {
             if (debug) console.warn("No such div ID:", divID);
@@ -211,6 +220,31 @@ function setupAudioProgressTracking(audio) {
 
 function setupAudioEndedHandler(audio) {
     audio.addEventListener("ended", () => {
+
+        // 1. Record listen percentage
+        try {
+            if (window.currentSongObject && listenStartTime) {
+                const totalDuration = audio.duration || 30;
+                const elapsed = (Date.now() - listenStartTime) / 1000;
+                const listenPercent = Math.min((elapsed / totalDuration) * 100, 100);
+
+                updateTasteProfile(window.currentSongObject, {
+                    listen: true,
+                    listenPercent: listenPercent,
+                });
+
+                if (debug) console.log(`🎧 Logged listenPercent: ${listenPercent.toFixed(1)}%`);
+            }
+        } catch (err) {
+            console.warn("⚠️ Listen% tracking error:", err);
+        }
+
+        // 2. reset timer
+        listenStartTime = null;
+
+
+
+        // 3. replay behavior
         if (audio.currentTime !== 0) audio.currentTime = 0;
         if (!audio.paused) {
             audio.play();
@@ -227,6 +261,7 @@ function setupAudioPlayerListeners() {
         playBtn.addEventListener("click", () => {
             if (!mainAudio || !mainPreviewUrl) return;
             mainAudio.play();
+            listenStartTime = Date.now(); // start tracking listening time
             playBtn.style.display = "none";
             pauseBtn.style.display = "inline";
             mainCardPlaying = true;
@@ -281,19 +316,52 @@ function lockCardsHeightOnceLoaded(mainEl = null, nextEl = null) {
     // });
 }
 
+// =============================
+// ======== LISTEN LOGGING =====
+// =============================
+
+function logListen() {
+  if (!mainAudio || !window.currentSongObject) return;
+  try {
+    const elapsed = (Date.now() - (listenStartTime || Date.now())) / 1000;
+    const total = mainAudio.duration || 30;
+    const percent = Math.min((elapsed / total) * 100, 100);
+
+    updateTasteProfile(window.currentSongObject, {
+      listen: true,
+      listenPercent: percent,
+    });
+
+    if (debug) console.log(`🎧 Logged listen%: ${percent.toFixed(1)}%`);
+  } catch (err) {
+    console.warn("⚠️ listen% tracking failed:", err);
+  }
+  listenStartTime = null;
+}
 
 
 // =============================
 // =======  SONG SWITCH   ======
 // =============================
 
-let currentSong = requestSong();
+// Global song state variables
+let currentSong;
+let nextSong;
 let currentSongJson = {};
-let nextSong = requestSong();
 
-fetchAndDisplaySong(currentSong, "main");
-fetchAndDisplaySong(nextSong, "next");
+
+
+(async function initSongs() {
+
+ currentSong = requestSong();
+ nextSong = requestSong();
+
+ await fetchAndDisplaySong(currentSong, "main");
+ await fetchAndDisplaySong(nextSong, "next");
+
 lockCardsHeightOnceLoaded();
+
+})();
 
 let nextCardHTML = `
       <div class="card" id="next" style="opacity: 0;">
@@ -471,16 +539,47 @@ async function handleSongSwitch(onSongAction) {
 window.handleSongSwitch = handleSongSwitch;
 window.animateSwipe = animateSwipe;
 
+// fixed timing for dislike
 document.getElementById("dislike-btn").addEventListener("click", () => {
     if (!window.currentSongObject) return console.warn("⚠️ No current song object yet!");
+
+    // capture it NOW before switching
+    const songToDislike = { ...window.currentSongObject };
+
     showSwipePopup("dislike");
-    animateSwipe("left", () => handleSongSwitch(dislikeSong));
+    animateSwipe("left", () => 
+        
+        handleSongSwitch(() => {
+            // send signals after dislike
+            logListen();
+            dislikeSong(songToDislike);
+
+            // yet to implement:
+            // isfavorite
+            // isShared
+        })
+    );
 });
 
 document.getElementById("like-btn").addEventListener("click", () => {
     if (!window.currentSongObject) return console.warn("⚠️ No current song object yet!");
+
+    const songToLike = {...window.currentSongObject};
+
     showSwipePopup("like");
-    animateSwipe("right", () => handleSongSwitch(likeSong));
+    animateSwipe("right", () => 
+        
+        handleSongSwitch(() => {
+
+            // send signals after like
+            logListen();
+            likeSong(songToLike);
+
+            // yet to implement:
+            // isfavorite
+            // isShared
+        })
+    );
 });
 
 // =============================
