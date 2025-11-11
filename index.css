@@ -109,6 +109,7 @@ nav > p {
   justify-content: flex-end;
   min-height: 100dvh;
   gap: calc(32 / var(--simWidth) * 100vw);
+  overflow: hidden;
 }
 
 /* =========================================
@@ -367,7 +368,8 @@ input[type="range"]::-moz-range-thumb {
 .iconPopup {
   position: fixed;
   z-index: 2;
-  top: 40vh;
+  /* top: 40vh; */
+  top: calc(100vh - ((470 + 128) / var(--simWidth) * 100vw));
   /* fill: #000000; */
 
   width: calc(128 / var(--simWidth) * 100vw);
@@ -383,7 +385,7 @@ input[type="range"]::-moz-range-thumb {
 
 .dislikePopup {
   background-color: rgba(255, 85, 85, 0.5);
-  left: calc((var(--simWidth) - 160) / var(--simWidth) * 100vw);
+  left: calc((var(--simWidth) - 128 - 32) / var(--simWidth) * 100vw);
 }
 
 .likePopup {
