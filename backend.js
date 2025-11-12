@@ -60,7 +60,7 @@ export function requestSong() {
   }
 
   // Background refill if queue low
-  if (songs.length <= 3) {
+  if (songs.length <= 50) {  // Changed to 50 to disable AI
     if (debug) console.log("Queue low (<=3), requesting new AI song…");
     recommendSong()
       .then((newSong) => {
