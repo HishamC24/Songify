@@ -10,12 +10,24 @@ let cachedMCP = null;
 
 // ======== Default fallback songs ========
 export let songs = [
-  "Can't Hold Us - Macklemore",
   "GTA 2 - Rarin",
   "Assumptions - Sam Gellaitry",
   "Levitating - Dua Lipa",
   "Loyal - ODESZA",
   "How Long - Charlie Puth",
+  "Not Like Us - Kendrick Lamar",
+  "Adventure of a Lifetime - Coldplay",
+  "Treasure - Bruno Mars",
+  "September - Earth, Wind & Fire",
+  "Higher Love - Kygo & Whitney Houston",
+  "Walking on a Dream - Empire of the Sun",
+  "Classic - MKTO",
+  "Good Day for Living - Rascal Flatts",
+  "Cake By The Ocean - DNCE",
+  "Come and Get Your Love - Redbone",
+  "Take On Me - a-ha",
+  "Can't Stop The Feeling! - Justin Timberlake",
+  "Shut Up and Dance - WALK THE MOON"
 ];
 
 // ======== Default vector example ========
@@ -34,8 +46,8 @@ async function getMCP() {
   const res = await fetch("./backend/songify_mcp_v1.json");
   cachedMCP = await res.json();
 
-  if(debug) console.log(`🧠 MCP loaded once: ${cachedMCP.name} v${cachedMCP.version}`);
-  
+  if (debug) console.log(`🧠 MCP loaded once: ${cachedMCP.name} v${cachedMCP.version}`);
+
   return cachedMCP;
 }
 
@@ -83,7 +95,7 @@ export async function recommendSong(vector = tasteVector) {
 
   try {
     const MCP = await getMCP();
-    
+
     const prompt = buildPrompt(MCP, vector);
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -134,3 +146,6 @@ export async function recommendSong(vector = tasteVector) {
     return fallback;
   }
 }
+
+
+
