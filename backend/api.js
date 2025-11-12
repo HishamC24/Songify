@@ -10,6 +10,7 @@ let cachedMCP = null;
 
 // ======== Default fallback songs ========
 export let songs = [
+  "Can't Hold Us - Macklemore",
   "GTA 2 - Rarin",
   "Assumptions - Sam Gellaitry",
   "Levitating - Dua Lipa",
