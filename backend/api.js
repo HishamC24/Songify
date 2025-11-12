@@ -3,7 +3,7 @@
  */
 import { debug } from "../globalSettings.js";
 
-const OPENROUTER_API_KEY = "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"; // ⬅️ your key here
+const OPENROUTER_API_KEY = ""; // ⬅️ your key here
 const RECENT_HISTORY_LIMIT = 10;
 let recentSongs = [];
 let cachedMCP = null;
