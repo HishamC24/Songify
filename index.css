@@ -1,5 +1,5 @@
 /* =========================================
-  1. FONT FACES
+  FONT FACES
   ========================================= */
 @font-face {
   font-family: "SF Pro Display";
@@ -38,7 +38,7 @@
 }
 
 /* =========================================
- 2. GLOBAL RESET & BASE STYLES
+ GLOBAL RESET & BASE STYLES
  ========================================= */
 
 :root {
@@ -68,9 +68,6 @@ nav {
   align-items: center;
   width: calc(376 / var(--simWidth) * 100vw);
   margin: calc(32 / var(--simWidth) * 100vw);
-  /* border-radius: 2.5rem; */
-  /* backdrop-filter: blur(0.5rem); */
-  /* -webkit-backdrop-filter: blur(0.5rem); */
   z-index: 1000;
 }
 
@@ -78,28 +75,31 @@ nav > p {
   color: #fff;
   font-weight: 900;
   font-size: calc(32 / var(--simWidth) * 100vw);
-  /* padding-left: 0.5rem; */
 }
 
-#menu {
-  background-color: rgba(0, 128, 255, 0.5);
+.menuToggle {
   width: calc(48 / var(--simWidth) * 100vw);
   height: calc(48 / var(--simWidth) * 100vw);
   border-radius: calc(24 / var(--simWidth) * 100vw);
-  backdrop-filter: blur(0.5rem);
-  -webkit-backdrop-filter: blur(0.5rem);
+  backdrop-filter: blur(0.25rem);
+  -webkit-backdrop-filter: blur(0.25rem);
   display: flex;
   transition: all 0.1s ease-in-out;
   justify-content: center;
-  align-content: center;
+  align-items: center;
 }
 
-#menu:active {
-  background-color: rgba(0, 128, 255, 0.75);
-}
-
-#menu > svg {
+.menuToggle > svg {
   width: calc(24 / var(--simWidth) * 100vw);
+  height: calc(24 / var(--simWidth) * 100vw);
+}
+
+#cardViewMenuButton {
+  background-color: rgba(0, 128, 255, 0.5);
+}
+
+#cardViewMenuButton:active {
+  background-color: rgba(0, 128, 255, 0.75);
 }
 
 #body {
@@ -113,7 +113,7 @@ nav > p {
 }
 
 /* =========================================
- 3. LAYOUT STRUCTURE
+ LAYOUT STRUCTURE
  ========================================= */
 #cards {
   position: relative;
@@ -124,7 +124,7 @@ nav > p {
 }
 
 /* =========================================
- 4. CARD STYLES
+ CARD STYLES
  ========================================= */
 .card {
   background-color: rgba(255, 255, 255, 0.33);
@@ -140,7 +140,7 @@ nav > p {
   -webkit-backdrop-filter: blur(0.5rem);
 }
 
-#main.card {
+#mainCard.card {
   position: relative;
   z-index: 3;
   top: 0;
@@ -148,7 +148,7 @@ nav > p {
   will-change: transform;
 }
 
-#next.card {
+#nextCard.card {
   position: absolute;
   top: calc(-48 / var(--simWidth) * 100vw);
   scale: 0.9;
@@ -169,16 +169,16 @@ nav > p {
 }
 
 /* =========================================
- 5. TYPOGRAPHY
+ TYPOGRAPHY
  ========================================= */
-.title {
+.card .title {
   font-size: calc(32 / var(--simWidth) * 100vw);
   font-weight: 900;
   white-space: nowrap;
   overflow: hidden;
 }
 
-.artist {
+.card .artist {
   font-size: calc(24 / var(--simWidth) * 100vw);
   font-weight: 300;
   color: #333;
@@ -193,7 +193,7 @@ nav > p {
 }
 
 /* =========================================
- 6. PLAYER CONTROLS
+ PLAYER CONTROLS
  ========================================= */
 .playerContainer {
   display: flex;
@@ -247,7 +247,7 @@ nav > p {
 }
 
 /* =========================================
- 7. RANGE SLIDER STYLES
+ RANGE SLIDER STYLES
  ========================================= */
 input[type="range"] {
   -webkit-appearance: none;
@@ -297,7 +297,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* =========================================
- 8. BUTTONS
+ BUTTONS
  ========================================= */
 /* Install Button */
 #install-btn {
@@ -330,8 +330,6 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  backdrop-filter: blur(0.5rem);
-  -webkit-backdrop-filter: blur(0.5rem);
   transition: all 0.1s ease-in-out;
 }
 
@@ -375,8 +373,8 @@ input[type="range"]::-moz-range-thumb {
   width: calc(128 / var(--simWidth) * 100vw);
   height: calc(128 / var(--simWidth) * 100vw);
   border-radius: calc(64 / var(--simWidth) * 100vw);
-  backdrop-filter: blur(0.5rem);
-  -webkit-backdrop-filter: blur(0.5rem);
+  backdrop-filter: blur(0.25rem);
+  -webkit-backdrop-filter: blur(0.25rem);
   display: flex;
   justify-content: center;
   align-content: center;
@@ -398,7 +396,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* =========================================
- 9. MARQUEE ANIMATION
+ MARQUEE ANIMATION
  ========================================= */
 .marquee {
   position: relative;
@@ -431,7 +429,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* =========================================
- 10. BROWSER-SPECIFIC FIXES (Old Edge / IE)
+ BROWSER-SPECIFIC FIXES (Old Edge / IE)
  ========================================= */
 input[type="range"]::-ms-track {
   height: calc(4 / var(--simWidth) * 100vw);
@@ -454,4 +452,128 @@ input[type="range"]::-ms-thumb {
   background: #000;
   border-radius: 50%;
   cursor: pointer;
+}
+
+/* =========================================
+ List view menu
+ ========================================= */
+
+#listItems {
+  background-color: rgba(255, 255, 255, 0.15);
+  width: calc((var(--simWidth) - 128) / var(--simWidth) * 100vw);
+  border-radius: calc(64 / var(--simWidth) * 100vw);
+  padding: calc(32 / var(--simWidth) * 100vw);
+  margin-top: calc(32 / var(--simWidth) * 100vw);
+  margin-left: calc(32 / var(--simWidth) * 100vw);
+  margin-bottom: calc(112 / var(--simWidth) * 100vw);
+}
+
+.part1 {
+  display: flex;
+  align-items: center;
+  gap: calc(16 / var(--simWidth) * 100vw);
+}
+
+.part1 .menuItemImage {
+  width: calc(128 / var(--simWidth) * 100vw);
+  height: calc(128 / var(--simWidth) * 100vw);
+  border-radius: calc(32 / var(--simWidth) * 100vw);
+}
+
+.part1 p {
+  font-size: calc(24 / var(--simWidth) * 100vw);
+  color: #ffffff;
+}
+
+.part2 {
+  display: flex;
+  flex-direction: column;
+  margin-top: calc(16 / var(--simWidth) * 100vw);
+}
+
+.part2 .title {
+  font-size: calc(32 / var(--simWidth) * 100vw);
+  color: #ffffff;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.part2 .artist {
+  font-size: calc(24 / var(--simWidth) * 100vw);
+  color: #bfbfbf;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.part3 {
+  display: flex;
+  gap: calc(16 / var(--simWidth) * 100vw);
+  margin-top: calc(16 / var(--simWidth) * 100vw);
+}
+
+.part3 > div {
+  flex: 1 1 0;
+  height: calc(48 / var(--simWidth) * 100vw);
+  border-radius: calc(24 / var(--simWidth) * 100vw);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.star.starred {
+  background-color: #0091ff;
+}
+
+.part3 > div > svg {
+  width: calc(24 / var(--simWidth) * 100vw);
+  height: calc(24 / var(--simWidth) * 100vw);
+  color: #ffffff;
+}
+
+#listItems > hr {
+  margin: calc(24 / var(--simWidth) * 100vw) 0;
+  background-color: #bfbfbf;
+  /* border-width: calc(2 / var(--simWidth) * 100vw); */
+  border-width: 0;
+  height: calc(4 / var(--simWidth) * 100vw);
+  border-radius: calc(2 / var(--simWidth) * 100vw);
+}
+
+#listBottom {
+  position: fixed;
+  bottom: calc(32 / var(--simWidth) * 100vw);
+  left: calc(32 / var(--simWidth) * 100vw);
+  width: calc((var(--simWidth) - 64) / var(--simWidth) * 100vw);
+  display: flex;
+  gap: calc(16 / var(--simWidth) * 100vw);
+}
+
+#menuTextInput {
+  background-color: rgba(255, 255, 255, 0.5);
+  width: auto;
+  flex: 1 1 0;
+  height: calc(48 / var(--simWidth) * 100vw);
+  border-radius: calc(24 / var(--simWidth) * 100vw);
+  backdrop-filter: blur(0.25rem);
+  -webkit-backdrop-filter: blur(0.25rem);
+  padding-left: calc(24 / var(--simWidth) * 100vw);
+  border: none;
+  color: #000000;
+}
+
+#menuViewMenuButton > svg {
+  /* Welcome to the world of Optical Balance! :) - Hisham C. */
+  padding-right: calc(1 / var(--simWidth) * 100vw);
+}
+
+#menuViewMenuButton {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+#menuViewMenuButton:active {
+  background-color: rgba(255, 255, 255, 0.75);
 }

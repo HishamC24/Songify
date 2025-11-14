@@ -96,7 +96,7 @@ async function fetchAndDisplaySong(songName, divID) {
             return;
         }
 
-        if (divID === "main") window.currentSongObject = song;
+        if (divID === "mainCard") window.currentSongObject = song;
 
         const img = card.querySelector("img");
         const titleElem = card.querySelector(".title");
@@ -132,15 +132,15 @@ async function fetchAndDisplaySong(songName, divID) {
         `;
         }
 
-        if (divID === "main") setupMainAudio(song.previewUrl);
+        if (divID === "mainCard") setupMainAudio(song.previewUrl);
     } catch (err) {
-        console.error("Error fetching data:", err);
+        console.error("Error fetching data:", err, songName);
     }
 }
 
 function handleNoSong(divID) {
     if (debug) console.warn("No song results found.");
-    if (divID !== "main") return;
+    if (divID !== "mainCard") return;
 
     resetAudio();
 }
@@ -302,8 +302,8 @@ function lockCardsHeightOnceLoaded(mainEl = null, nextEl = null) {
 
     if (cardsContainer.dataset.locked === "true") return;
 
-    mainEl ||= document.getElementById("main");
-    nextEl ||= document.getElementById("next");
+    mainEl ||= document.getElementById("mainCard");
+    nextEl ||= document.getElementById("nextCard");
 
     if (!mainEl || !nextEl) return;
 
@@ -321,22 +321,22 @@ function lockCardsHeightOnceLoaded(mainEl = null, nextEl = null) {
 // =============================
 
 function logListen() {
-  if (!mainAudio || !window.currentSongObject) return;
-  try {
-    const elapsed = (Date.now() - (listenStartTime || Date.now())) / 1000;
-    const total = mainAudio.duration || 30;
-    const percent = Math.min((elapsed / total) * 100, 100);
+    if (!mainAudio || !window.currentSongObject) return;
+    try {
+        const elapsed = (Date.now() - (listenStartTime || Date.now())) / 1000;
+        const total = mainAudio.duration || 30;
+        const percent = Math.min((elapsed / total) * 100, 100);
 
-    updateTasteProfile(window.currentSongObject, {
-      listen: true,
-      listenPercent: percent,
-    });
+        updateTasteProfile(window.currentSongObject, {
+            listen: true,
+            listenPercent: percent,
+        });
 
-    if (debug) console.log(`🎧 Logged listen%: ${percent.toFixed(1)}%`);
-  } catch (err) {
-    console.warn("⚠️ listen% tracking failed:", err);
-  }
-  listenStartTime = null;
+        if (debug) console.log(`🎧 Logged listen%: ${percent.toFixed(1)}%`);
+    } catch (err) {
+        console.warn("⚠️ listen% tracking failed:", err);
+    }
+    listenStartTime = null;
 }
 
 
@@ -353,18 +353,18 @@ let currentSongJson = {};
 
 (async function initSongs() {
 
- currentSong = requestSong();
- nextSong = requestSong();
+    currentSong = requestSong();
+    nextSong = requestSong();
 
- await fetchAndDisplaySong(currentSong, "main");
- await fetchAndDisplaySong(nextSong, "next");
+    await fetchAndDisplaySong(currentSong, "mainCard");
+    await fetchAndDisplaySong(nextSong, "nextCard");
 
-lockCardsHeightOnceLoaded();
+    lockCardsHeightOnceLoaded();
 
 })();
 
 let nextCardHTML = `
-      <div class="card" id="next" style="opacity: 0;">
+      <div class="card" id="nextCard" style="opacity: 0;">
         <img />
         <div class="explicitcy">
           <p class="title">Loading...</p>
@@ -458,7 +458,7 @@ function showSwipePopup(type) {
 }
 
 async function animateSwipe(direction, callback) {
-    const mainCard = document.getElementById("main");
+    const mainCard = document.getElementById("mainCard");
     if (!mainCard) {
         if (typeof callback === "function") callback();
         return;
@@ -488,8 +488,8 @@ async function handleSongSwitch(onSongAction) {
     });
 
     const cardsContainer = document.getElementById("cards");
-    const mainCard = document.getElementById("main");
-    const nextCard = document.getElementById("next");
+    const mainCard = document.getElementById("mainCard");
+    const nextCard = document.getElementById("nextCard");
 
     if (mainCard) {
         mainCard.remove();
@@ -497,15 +497,15 @@ async function handleSongSwitch(onSongAction) {
     }
 
     if (nextCard) {
-        nextCard.id = "main";
+        nextCard.id = "mainCard";
     }
 
     currentSong = nextSong;
 
-    await fetchAndDisplaySong(currentSong, "main");
+    await fetchAndDisplaySong(currentSong, "mainCard");
     if (debug) console.log("Song fetched and displayed");
 
-    const newMainCard = document.getElementById("main");
+    const newMainCard = document.getElementById("mainCard");
 
     if (newMainCard) {
         newMainCard.insertAdjacentHTML("beforebegin", nextCardHTML);
@@ -517,14 +517,14 @@ async function handleSongSwitch(onSongAction) {
     }
 
     nextSong = requestSong();
-    fetchAndDisplaySong(nextSong, "next");
+    fetchAndDisplaySong(nextSong, "nextCard");
 
     refreshAudioPlayerElements();
     setupAudioPlayerListeners();
     attachIOSRangeHandlers();
 
-    // nextCard.style.opacity = ""; // this doesnt work since what the new "next" is doesnt get updated
-    document.getElementById("next").style.opacity = "";
+    // nextCard.style.opacity = ""; // this doesnt work since what the new "nextCard" is doesnt get updated
+    document.getElementById("nextCard").style.opacity = "";
 
     if (mainCardPlaying && mainAudio) {
         mainAudio.currentTime = 0;
@@ -547,8 +547,8 @@ document.getElementById("dislike-btn").addEventListener("click", () => {
     const songToDislike = { ...window.currentSongObject };
 
     showSwipePopup("dislike");
-    animateSwipe("left", () => 
-        
+    animateSwipe("left", () =>
+
         handleSongSwitch(() => {
             // send signals after dislike
             logListen();
@@ -564,11 +564,11 @@ document.getElementById("dislike-btn").addEventListener("click", () => {
 document.getElementById("like-btn").addEventListener("click", () => {
     if (!window.currentSongObject) return console.warn("⚠️ No current song object yet!");
 
-    const songToLike = {...window.currentSongObject};
+    const songToLike = { ...window.currentSongObject };
 
     showSwipePopup("like");
-    animateSwipe("right", () => 
-        
+    animateSwipe("right", () =>
+
         handleSongSwitch(() => {
 
             // send signals after like
@@ -682,7 +682,7 @@ attachIOSRangeHandlers();
 // =============================
 
 (function setupMainCardDrag() {
-    let mainCard = document.getElementById("main");
+    let mainCard = document.getElementById("mainCard");
 
     let startX = 0;
     let lastX = 0;
@@ -710,12 +710,12 @@ attachIOSRangeHandlers();
             if (iconPopup) iconPopup.remove();
             if (x > 0) {
                 iconLocation.insertAdjacentHTML("beforeend", likeIcon);
-                let likeIconElement = document.getElementById("main").querySelector(".dislikePopup");
+                let likeIconElement = document.getElementById("mainCard").querySelector(".dislikePopup");
                 iconLocation.querySelector(".likePopup").style.opacity = percentSwiped;
             }
             else {
                 iconLocation.insertAdjacentHTML("beforeend", dislikeIcon);
-                let dislikeIconElement = document.getElementById("main").querySelector(".likePopup");
+                let dislikeIconElement = document.getElementById("mainCard").querySelector(".likePopup");
                 iconLocation.querySelector(".dislikePopup").style.opacity = percentSwiped;
             }
         }
@@ -794,7 +794,7 @@ attachIOSRangeHandlers();
     }
 
     function attach() {
-        mainCard = document.getElementById("main");
+        mainCard = document.getElementById("mainCard");
         if (!mainCard) return;
         cleanListeners(mainCard);
         mainCard.addEventListener('touchstart', onTouchStart, { passive: false });
@@ -807,12 +807,39 @@ attachIOSRangeHandlers();
         attach();
     });
     const observeTarget = () => {
-        mainCard = document.getElementById("main");
+        mainCard = document.getElementById("mainCard");
         if (mainCard) observer.observe(mainCard.parentElement, { childList: true });
     };
     attach();
     observeTarget();
 })();
+
+const menuToggleElements = document.querySelectorAll('.menuToggle');
+menuToggleElements.forEach(el => {
+    el.addEventListener("click", () => {
+        const cardView = document.getElementById("cardView");
+        const menuView = document.getElementById("menuView");
+
+        if (!cardView || !menuView) return;
+
+        // Check current state: is cardView visible?
+        const cardViewVisible = cardView.style.display !== "none";
+
+        if (cardViewVisible) {
+            cardView.style.display = "none";
+            menuView.style.display = "";
+        } else {
+            cardView.style.display = "";
+            menuView.style.display = "none";
+        }
+    });
+});
+
+function populateList() {
+    songs = []
+}
+
+
 
 // =============================
 // =======  BORDER RADIUS ======
