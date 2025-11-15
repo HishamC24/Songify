@@ -149,18 +149,18 @@ function handleNoSong(divID) {
 // ======= AUDIO PLAYER  =======
 // =============================
 
-let playBtn = document.querySelector("#main .play");
-let pauseBtn = document.querySelector("#main .pause");
-let seekbar = document.querySelector("#main .seekbar");
-let currentTimeLabel = document.querySelector("#main .currentTimeLabel");
-let durationLabel = document.querySelector("#main .durationLabel");
+let playBtn = document.querySelector("#mainCard .play");
+let pauseBtn = document.querySelector("#mainCard .pause");
+let seekbar = document.querySelector("#mainCard .seekbar");
+let currentTimeLabel = document.querySelector("#mainCard .currentTimeLabel");
+let durationLabel = document.querySelector("#mainCard .durationLabel");
 
 function refreshAudioPlayerElements() {
-    playBtn = document.querySelector("#main .play");
-    pauseBtn = document.querySelector("#main .pause");
-    seekbar = document.querySelector("#main .seekbar");
-    currentTimeLabel = document.querySelector("#main .currentTimeLabel");
-    durationLabel = document.querySelector("#main .durationLabel");
+    playBtn = document.querySelector("#mainCard .play");
+    pauseBtn = document.querySelector("#mainCard .pause");
+    seekbar = document.querySelector("#mainCard .seekbar");
+    currentTimeLabel = document.querySelector("#mainCard .currentTimeLabel");
+    durationLabel = document.querySelector("#mainCard .durationLabel");
 }
 
 if (pauseBtn) pauseBtn.style.display = "none";
