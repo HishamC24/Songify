@@ -1,10 +1,10 @@
 /**
- * Songify backend – OpenRouter single-model version
+ * Songify backend – OpenRouter (5-song version)
  */
 import { debug } from "../globalSettings.js";
 
 const OPENROUTER_API_KEY = ""; // ⬅️ your key here
-const RECENT_HISTORY_LIMIT = 10;
+const RECENT_HISTORY_LIMIT = 20;
 let recentSongs = [];
 let cachedMCP = null;
 
@@ -14,21 +14,7 @@ export let songs = [
   "GTA 2 - Rarin",
   "Assumptions - Sam Gellaitry",
   "Levitating - Dua Lipa",
-  "Loyal - ODESZA",
   "How Long - Charlie Puth",
-  "Not Like Us - Kendrick Lamar",
-  "Adventure of a Lifetime - Coldplay",
-  "Treasure - Bruno Mars",
-  "September - Earth, Wind & Fire",
-  "Higher Love - Kygo & Whitney Houston",
-  "Walking on a Dream - Empire of the Sun",
-  "Classic - MKTO",
-  "Good Day for Living - Rascal Flatts",
-  "Cake By The Ocean - DNCE",
-  "Come and Get Your Love - Redbone",
-  "Take On Me - a-ha",
-  "Can't Stop The Feeling! - Justin Timberlake",
-  "Shut Up and Dance - WALK THE MOON"
 ];
 
 // ======== Default vector example ========
@@ -38,21 +24,21 @@ const tasteVector = {
   eraPreference: 0.624,
   explicitnessTolerance: 0.497,
   popularityBias: 0.304,
-  energyPreference: 0.883
+  energyPreference: 0.883,
 };
 
-// ======== Helper to load MCP once ========
+// ======== Load MCP once ========
 async function getMCP() {
   if (cachedMCP) return cachedMCP;
+
   const res = await fetch("./backend/songify_mcp_v1.json");
   cachedMCP = await res.json();
 
-  if (debug) console.log(`🧠 MCP loaded once: ${cachedMCP.name} v${cachedMCP.version}`);
-
+  if (debug) console.log(`🧠 MCP loaded: ${cachedMCP.name} v${cachedMCP.version}`);
   return cachedMCP;
 }
 
-// ======== Build the LLM prompt ========
+// ======== Build prompt (now for 5 songs) ========
 function buildPrompt(MCP, vector) {
   return `
 ${MCP.context.instructions.join("\n")}
@@ -65,38 +51,48 @@ ${JSON.stringify(vector, null, 2)}
 
 Avoid these songs (already suggested): ${recentSongs.join(", ")}
 
-Return ONLY a JSON array with one unique new song suggestion like:
-["Song - Artist"]
-Ensure it is not in the list above.
-Start with '[' and end with ']'. No markdown or prose.
-`;
+⚠️ RETURN EXACTLY THIS FORMAT:
+[
+  "Song - Artist",
+  "Song - Artist",
+  "Song - Artist",
+  "Song - Artist",
+  "Song - Artist"
+]
+
+No prose, no markdown. Only a raw JSON array. Must contain **5 unique** new songs.
+`.trim();
 }
 
-// ======== Parse AI output ========
+// ======== Parse AI response (array of 5 songs) ========
 function parseResponse(text) {
   try {
-    const match = text.match(/\[.*?\]/s);
+    const match = text.match(/\[[\s\S]*\]/);
     if (!match) {
-      if (debug) console.warn("⚠️ No JSON array found in output:", text);
+      if (debug) console.warn("⚠️ parseResponse(): No JSON array found.");
       return null;
     }
-    const parsed = JSON.parse(match[0]);
-    if (Array.isArray(parsed) && typeof parsed[0] === "string") return parsed[0];
-    if (debug) console.warn("⚠️ Parsed but invalid format:", parsed);
+
+    const arr = JSON.parse(match[0]);
+
+    if (Array.isArray(arr) && arr.every(s => typeof s === "string")) {
+      return arr;
+    }
+
+    if (debug) console.warn("⚠️ parseResponse(): Unexpected format:", arr);
     return null;
   } catch (err) {
-    if (debug) console.warn("⚠️ parseResponse() failed:", err, "Full text:", text);
+    if (debug) console.warn("⚠️ parseResponse() failed:", err);
     return null;
   }
 }
 
-// ======== Main recommendSong() ========
+// ======== Main recommendSong() (returns array of 5) ========
 export async function recommendSong(vector = tasteVector) {
   const model = "meta-llama/llama-3.3-70b-instruct:free";
 
   try {
     const MCP = await getMCP();
-
     const prompt = buildPrompt(MCP, vector);
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -105,48 +101,51 @@ export async function recommendSong(vector = tasteVector) {
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
         "HTTP-Referer": "http://127.0.0.1:5500/",
-        "X-Title": "Songify"
+        "X-Title": "Songify",
       },
       body: JSON.stringify({
         model,
-        temperature: 0.9,
-        max_tokens: 120,
+        temperature: 0.8,
+        max_tokens: 200,
         messages: [
           {
             role: "system",
-            content:
-              MCP.context.system_role ||
-              "You are Songify, a music recommendation AI."
+            content: MCP.context.system_role || "You are Songify, a music recommendation AI.",
           },
-          { role: "user", content: prompt }
-        ]
-      })
+          { role: "user", content: prompt },
+        ],
+      }),
     });
 
     if (!response.ok) throw new Error(await response.text());
+
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content?.trim() || "";
 
-    const song = parseResponse(text);
-    if (!song) throw new Error("Invalid AI output format");
+    const songsFromAI = parseResponse(text);
+    if (!songsFromAI) throw new Error("Invalid AI response");
 
-    // Update local recent history
-    if (!recentSongs.includes(song)) {
-      recentSongs.push(song);
-      if (recentSongs.length > RECENT_HISTORY_LIMIT) recentSongs.shift();
-      if (debug) console.log("🕒 Updated recentSongs:", recentSongs);
-    }
+    // Update history
+    songsFromAI.forEach(song => {
+      if (!recentSongs.includes(song)) {
+        recentSongs.push(song);
+        if (recentSongs.length > RECENT_HISTORY_LIMIT) recentSongs.shift();
+      }
+    });
 
-    if (debug) console.log("🎧 Recommended song:", song);
-    return song;
+    if (debug) console.log("🎧 AI returned 5 songs:", songsFromAI);
+    return songsFromAI;
 
   } catch (err) {
     if (debug) console.error("⚠️ OpenRouter error:", err);
-    const fallback = songs[Math.floor(Math.random() * songs.length)];
-    if (debug) console.log("🎵 Using fallback:", fallback);
+
+    // fallback: return 5 random local songs
+    const fallback = [];
+    for (let i = 0; i < 5; i++) {
+      fallback.push(songs[Math.floor(Math.random() * songs.length)]);
+    }
+
+    if (debug) console.log("🎵 Using fallback list:", fallback);
     return fallback;
   }
 }
-
-
-

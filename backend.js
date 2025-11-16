@@ -44,14 +44,14 @@ if (debug) console.log("👍 liked:", likedSongs, "👎 disliked:", dislikedSong
 // ==========================
 
 export function requestSong() {
-  // 🛡️ Safety: if queue empty, reseed
+  // 🛡️ Safety: if queue empty, reseed with ONE fallback
   if (!songs || songs.length === 0) {
     const fallback = "Levitating - Dua Lipa";
-    songs.push(fallback);
+    songs = [fallback]; // ensure only 1, avoid duplicates
     if (debug) console.warn("⚠️ Song queue was empty — reseeded with:", fallback);
   }
 
-  // 🎧 Take the next ready song
+  // 🎧 Take the next song
   const returnSong = songs.shift();
 
   if (debug) {
@@ -59,25 +59,33 @@ export function requestSong() {
     console.log("📦 Remaining queue:", songs);
   }
 
-  // Background refill if queue low
-  if (songs.length <= 50) {  // Changed to 50 to disable AI
-    if (debug) console.log("Queue low (<=3), requesting new AI song…");
+  // 🧠 Background refill if queue low
+  if (songs.length <= 3) {
+    if (debug) console.log("Queue low (<=3), requesting 5 new AI songs…");
+
     recommendSong()
-      .then((newSong) => {
-        if (newSong && typeof newSong === "string") {
-          songs.push(newSong);
-          if (debug) console.log("🎶Queued new AI song:", newSong);
-          if (debug) console.log(" 📦 Queue after refill:", songs);
+      .then((newSongs) => {
+
+        // newSongs MUST be an array of 5 strings
+        if (Array.isArray(newSongs) && newSongs.every(s => typeof s === "string")) {
+          songs.push(...newSongs);
+
+          if (debug) {
+            console.log("🎶 Queued new AI songs:", newSongs);
+            console.log("📦 Queue after refill:", songs);
+          }
+
         } else if (debug) {
-          console.warn("⚠️ AI returned invalid song:", newSong);
+          console.warn("⚠️ AI returned invalid song list:", newSongs);
         }
       })
-      .catch((err) => console.error("⚠️ Failed to queue AI song:", err));
+      .catch((err) => console.error("⚠️ Failed to queue AI songs:", err));
   }
 
-  // ✅ Always return a usable song string
+  // ✅ Always return a valid string
   return returnSong || "Levitating - Dua Lipa";
 }
+
 
 
 

@@ -1,10 +1,10 @@
 {
-  "name": "Songify MCP v1.1",
-  "version": "1.1",
-  "description": "Config for Llama 3.3 70B — outputs exactly one song recommendation in strict JSON array format.",
+  "name": "Songify MCP v1.2",
+  "version": "1.2",
+  "description": "Config for Llama 3.3 70B — outputs exactly five song recommendations in strict JSON array format.",
 
   "context": {
-    "system_role": "You are Songify, an AI music recommender that reads a user's taste vector and responds with exactly one new song that best fits their preferences.",
+    "system_role": "You are Songify, an AI music recommender that reads a user's taste vector and responds with exactly FIVE new songs that best fit their preferences.",
 
     "genre_key": {
       "0": "Pop",
@@ -32,11 +32,15 @@
       " • energyPreference — desired energy level (0 = mellow, 1 = energetic).",
       "",
       "Task:",
-      "Return exactly ONE recommended song title and artist that matches this vector.",
-      "Output must be a pure JSON array with one string element formatted as 'Song Title - Artist'.",
+      "Return exactly FIVE recommended song titles and artists that match this vector.",
+      "All five songs must be unique and must not appear in the avoid list provided.",
       "",
-      "Do NOT include any explanations, notes, markdown, quotes, or extra objects.",
-      "Return only valid JSON, e.g. [\"Levitating - Dua Lipa\"]"
+      "Output must be a pure JSON array with five string elements formatted as 'Song Title - Artist'.",
+      "",
+      "Do NOT include any explanations, notes, markdown, comments, or extra objects.",
+      "",
+      "Return only valid JSON, like:",
+      "[\"Song 1 - Artist\", \"Song 2 - Artist\", \"Song 3 - Artist\", \"Song 4 - Artist\", \"Song 5 - Artist\"]"
     ]
   },
 
@@ -70,10 +74,16 @@
     "items": {
       "type": "string",
       "pattern": "^[^\\-]+ - [^\\-]+$",
-      "description": "A single item formatted as 'Song Title - Artist'."
+      "description": "A song formatted as 'Song Title - Artist'."
     },
-    "minItems": 1,
-    "maxItems": 1,
-    "example": ["Levitating - Dua Lipa"]
+    "minItems": 5,
+    "maxItems": 5,
+    "example": [
+      "Levitating - Dua Lipa",
+      "Blinding Lights - The Weeknd",
+      "Heat Waves - Glass Animals",
+      "As It Was - Harry Styles",
+      "bad guy - Billie Eilish"
+    ]
   }
 }

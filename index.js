@@ -1,6 +1,8 @@
 import { updateTasteProfile } from "./backend/songify_logic.js";
 
 
+let isCardAnimating = false;
+let cardIsLoading = false;
 
 // =============================
 // =======  PWA INSTALL  =======
@@ -78,6 +80,12 @@ const formatDate = (dateStr) => {
 };
 
 async function fetchAndDisplaySong(songName, divID) {
+    
+    // UI Lock for if card is still loading
+    if (divID === "mainCard") {
+    cardIsLoading = true;
+}
+
     const url = `https://itunes.apple.com/search?term=${encodeURIComponent(songName)}`;
 
     try {
@@ -133,16 +141,31 @@ async function fetchAndDisplaySong(songName, divID) {
         }
 
         if (divID === "mainCard") setupMainAudio(song.previewUrl);
+
+        if (divID === "mainCard") {
+    cardIsLoading = false;
+}
+
     } catch (err) {
         console.error("Error fetching data:", err, songName);
     }
+
 }
 
 function handleNoSong(divID) {
-    if (debug) console.warn("No song results found.");
-    if (divID !== "mainCard") return;
+    
+    if (debug) console.warn("❌ No song results found – skipping...");
 
-    resetAudio();
+    if (divID === "mainCard") {
+    cardIsLoading = true;
+}
+
+    
+    nextSong = requestSong();
+
+    // Immediately try to fetch the next one
+    fetchAndDisplaySong(nextSong, divID);
+
 }
 
 // =============================
@@ -541,46 +564,79 @@ window.animateSwipe = animateSwipe;
 
 // fixed timing for dislike
 document.getElementById("dislike-btn").addEventListener("click", () => {
-    if (!window.currentSongObject) return console.warn("⚠️ No current song object yet!");
+    // Make sure we actually have a song first
+    if (!window.currentSongObject) {
+        console.warn("⚠️ No current song object yet!");
+        return;
+    }
 
-    // capture it NOW before switching
+    // 🛑 Prevent spam / double-taps during animation
+    if (isCardAnimating || cardIsLoading) {
+    console.warn("⏳ Card still loading, ignoring swipe.");
+    return;
+    }
+
+    isCardAnimating = true;
+
+
+    // Capture BEFORE switching
     const songToDislike = { ...window.currentSongObject };
 
     showSwipePopup("dislike");
-    animateSwipe("left", () =>
 
+    animateSwipe("left", () => {
         handleSongSwitch(() => {
-            // send signals after dislike
             logListen();
             dislikeSong(songToDislike);
+        });
 
-            // yet to implement:
-            // isfavorite
-            // isShared
-        })
-    );
+        // 🔓 Unlock AFTER layout has fully settled (no timing glitches)
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                isCardAnimating = false;
+            });
+        });
+    });
 });
 
+
+
+
 document.getElementById("like-btn").addEventListener("click", () => {
-    if (!window.currentSongObject) return console.warn("⚠️ No current song object yet!");
+    // Ensure current song exists
+    if (!window.currentSongObject) {
+        console.warn("⚠️ No current song object yet!");
+        return;
+    }
+
+    // 🛑 Prevent double-taps while swipe animation is running
+    if (isCardAnimating || cardIsLoading) {
+    console.warn("⏳ Card still loading, ignoring swipe.");
+    return;
+    }
+
+    isCardAnimating = true;
 
     const songToLike = { ...window.currentSongObject };
 
     showSwipePopup("like");
-    animateSwipe("right", () =>
 
+    animateSwipe("right", () => {
         handleSongSwitch(() => {
-
-            // send signals after like
             logListen();
             likeSong(songToLike);
+        });
 
-            // yet to implement:
-            // isfavorite
-            // isShared
-        })
-    );
+        // 🔓 Unlock ONLY after the DOM has fully updated (prevents the glitch)
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                isCardAnimating = false;
+            });
+        });
+    });
 });
+
+
 
 // =============================
 // =======  TITLE MARQUEE ======
@@ -740,10 +796,19 @@ attachIOSRangeHandlers();
             setCardX(mainCard, off);
             const handler = () => {
                 if (lastX > 0) {
-                    handleSongSwitch(likeSong);
+                    // Swipe right -> LIKE
+                    handleSongSwitch(() => {
+                        logListen();
+                        likeSong({ ...window.currentSongObject });
+                    });
                 } else {
-                    handleSongSwitch(dislikeSong);
+                    // Swipe left -> DISLIKE
+                    handleSongSwitch(() => {
+                        logListen();
+                        dislikeSong({ ...window.currentSongObject });
+                    });
                 }
+
             };
             mainCard.addEventListener('transitionend', handler);
         } else {
