@@ -142,6 +142,93 @@ export async function likeSong(song) {
 }
 
 
+/* some dont show up because itunes doesnt return a result,
+in theory we would be able to tell if theres no result when
+swiping so it doesnt even show up in this list in the first
+place at all - HC */
+
+let playlistList = [
+  {
+    "name": "All", "emoji": "🎵", "songList": [
+      { "name": "Can't Hold Us - Macklemore", "rank": 1, "favorited": true },
+      { "name": "GTA 2 - Rarin", "rank": 2, "favorited": false },
+      { "name": "Assumptions - Sam Gellaitry", "rank": 3, "favorited": true },
+      { "name": "Levitating - Dua Lipa", "rank": 4, "favorited": true },
+      { "name": "Loyal - ODESZA", "rank": 5, "favorited": true },
+      { "name": "How Long - Charlie Puth", "rank": 6, "favorited": false },
+      { "name": "Not Like Us - Kendrick Lamar", "rank": 7, "favorited": false },
+      // { "name": "Adventure of a Lifetime - Coldplay", "rank": 8, "favorited": false },
+      { "name": "Treasure - Bruno Mars", "rank": 9, "favorited": false },
+      // { "name": "September - Earth, Wind & Fire", "rank": 10, "favorited": false },
+      { "name": "Higher Love - Kygo & Whitney Houston", "rank": 11, "favorited": false },
+      // { "name": "Walking on a Dream - Empire of the Sun", "rank": 12, "favorited": false },
+      { "name": "Classic - MKTO", "rank": 13, "favorited": false },
+      // { "name": "Good Day for Living - Rascal Flatts", "rank": 14, "favorited": false },
+      { "name": "Cake By The Ocean - DNCE", "rank": 15, "favorited": true },
+      { "name": "Come and Get Your Love - Redbone", "rank": 16, "favorited": false },
+      // { "name": "Take On Me - a-ha", "rank": 17, "favorited": false },
+      // { "name": "Can't Stop The Feeling! - Justin Timberlake", "rank": 18, "favorited": false },
+      { "name": "Shut Up and Dance - WALK THE MOON", "rank": 19, "favorited": false }
+    ]
+  },
+  {
+    "name": "Favorites", "emoji": "⭐", "songList": [
+      { "name": "Can't Hold Us - Macklemore", "rank": 1, "favorited": true }
+    ]
+  },
+  {
+    "name": "Video Games", "emoji": "🎮", "songList": [
+      { "name": "Title Theme - Koji Kondo (The Legend of Zelda: Ocarina of Time)", "rank": 1, "favorited": true },
+      { "name": "Still Alive - GLaDOS (Portal)", "rank": 2, "favorited": true },
+      { "name": "Zelda's Lullaby - Koji Kondo (The Legend of Zelda: Ocarina of Time)", "rank": 3, "favorited": false },
+      { "name": "One Winged Angel - Nobuo Uematsu (Final Fantasy VII)", "rank": 4, "favorited": false },
+      { "name": "Gerudo Valley - Koji Kondo (The Legend of Zelda: Ocarina of Time)", "rank": 5, "favorited": false },
+      { "name": "Megalovania - Toby Fox (Undertale)", "rank": 6, "favorited": true },
+      { "name": "Bombing Mission - Nobuo Uematsu (Final Fantasy VII)", "rank": 7, "favorited": false },
+      { "name": "Staff Roll - Koji Kondo (Super Mario 64)", "rank": 8, "favorited": false },
+      { "name": "Guile's Theme - Yoko Shimomura (Street Fighter II)", "rank": 9, "favorited": false },
+      { "name": "Main Theme - Koji Kondo (Super Mario Bros.)", "rank": 10, "favorited": true },
+      { "name": "Aquatic Ambiance - David Wise (Donkey Kong Country)", "rank": 11, "favorited": false }
+    ]
+  },
+  {
+    "name": "Classical", "emoji": "🎻", "songList": [
+      { "name": "Symphony No. 5 in C minor - Ludwig van Beethoven", "rank": 1, "favorited": true },
+      { "name": "Clair de Lune - Claude Debussy", "rank": 2, "favorited": false },
+      { "name": "The Four Seasons: Spring - Antonio Vivaldi", "rank": 3, "favorited": false },
+      { "name": "Canon in D - Johann Pachelbel", "rank": 4, "favorited": false },
+      { "name": "Swan Lake Suite - Pyotr Ilyich Tchaikovsky", "rank": 5, "favorited": true },
+      { "name": "Nocturne Op.9 No.2 - Frédéric Chopin", "rank": 6, "favorited": false },
+      { "name": "Eine kleine Nachtmusik - Wolfgang Amadeus Mozart", "rank": 7, "favorited": true },
+      { "name": "Gymnopédie No.1 - Erik Satie", "rank": 8, "favorited": false },
+      { "name": "Boléro - Maurice Ravel", "rank": 9, "favorited": false },
+      { "name": "Moonlight Sonata - Ludwig van Beethoven", "rank": 10, "favorited": true }
+    ]
+  },
+  {
+    "name": "Jazz", "emoji": "🎷", "songList": [
+      { "name": "So What - Miles Davis", "rank": 1, "favorited": true },
+      { "name": "Take Five - Dave Brubeck Quartet", "rank": 2, "favorited": false },
+      { "name": "My Favorite Things - John Coltrane", "rank": 3, "favorited": false },
+      { "name": "Freddie Freeloader - Miles Davis", "rank": 4, "favorited": true },
+      { "name": "Feeling Good - Nina Simone", "rank": 5, "favorited": false },
+      { "name": "All Blues - Miles Davis", "rank": 6, "favorited": false },
+      { "name": "Blue in Green - Bill Evans", "rank": 7, "favorited": false },
+      { "name": "Round Midnight - Thelonious Monk", "rank": 8, "favorited": true },
+      { "name": "What a Wonderful World - Louis Armstrong", "rank": 9, "favorited": true },
+      { "name": "Cantaloupe Island - Herbie Hancock", "rank": 10, "favorited": false }
+    ]
+  }
+]
+
+export function requestSongList(playlistName = "All") {
+  return playlistList.filter(playlist => playlist.name == playlistName);
+}
+
+export function requestPlaylistList() {
+  return playlistList;
+}
+
 // ========================
 // ===== EXPORTS ==========
 // ========================

@@ -77,7 +77,8 @@ nav > p {
   font-size: calc(32 / var(--simWidth) * 100vw);
 }
 
-.menuToggle {
+.menuToggle,
+#clearSearchButton {
   width: calc(48 / var(--simWidth) * 100vw);
   height: calc(48 / var(--simWidth) * 100vw);
   border-radius: calc(24 / var(--simWidth) * 100vw);
@@ -89,7 +90,8 @@ nav > p {
   align-items: center;
 }
 
-.menuToggle > svg {
+.menuToggle > svg,
+#clearSearchButton > svg {
   width: calc(24 / var(--simWidth) * 100vw);
   height: calc(24 / var(--simWidth) * 100vw);
 }
@@ -458,12 +460,56 @@ input[type="range"]::-ms-thumb {
  List view menu
  ========================================= */
 
+#listTop {
+  position: fixed;
+  top: calc(32 / var(--simWidth) * 100vw);
+  left: calc(32 / var(--simWidth) * 100vw);
+  z-index: 10;
+}
+
+#playlistSelectionDropdown {
+  position: absolute;
+  top: calc((16 + 1) / var(--simWidth) * 100vw);
+  right: calc(16 / var(--simWidth) * 100vw);
+  width: calc(32 / var(--simWidth) * 100vw);
+  height: calc(32 / var(--simWidth) * 100vw);
+}
+
+#playlistSelection {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  border-radius: calc(32 / var(--simWidth) * 100vw);
+  background-color: rgba(0, 128, 255, 0.5);
+  backdrop-filter: blur(0.25rem);
+  -webkit-backdrop-filter: blur(0.25rem);
+  padding: calc(16 / var(--simWidth) * 100vw);
+  width: calc((var(--simWidth) - 96) / var(--simWidth) * 100vw);
+  height: calc(32 / var(--simWidth) * 100vw);
+  gap: calc(16 / var(--simWidth) * 100vw);
+}
+
+.playlistSelectionItem {
+  display: flex;
+  align-items: center;
+  gap: calc(8 / var(--simWidth) * 100vw);
+}
+
+.playlistSelectionItem.unselected {
+  opacity: 0;
+}
+
+.playlistSelectionItem > * {
+  font-size: calc(24 / var(--simWidth) * 100vw);
+  color: #ffffff;
+}
+
 #listItems {
   background-color: rgba(255, 255, 255, 0.15);
   width: calc((var(--simWidth) - 128) / var(--simWidth) * 100vw);
   border-radius: calc(64 / var(--simWidth) * 100vw);
   padding: calc(32 / var(--simWidth) * 100vw);
-  margin-top: calc(32 / var(--simWidth) * 100vw);
+  margin-top: calc(128 / var(--simWidth) * 100vw);
   margin-left: calc(32 / var(--simWidth) * 100vw);
   margin-bottom: calc(112 / var(--simWidth) * 100vw);
 }
@@ -549,7 +595,7 @@ input[type="range"]::-ms-thumb {
   left: calc(32 / var(--simWidth) * 100vw);
   width: calc((var(--simWidth) - 64) / var(--simWidth) * 100vw);
   display: flex;
-  gap: calc(16 / var(--simWidth) * 100vw);
+  gap: calc(8 / var(--simWidth) * 100vw);
 }
 
 #menuTextInput {
@@ -570,10 +616,12 @@ input[type="range"]::-ms-thumb {
   padding-right: calc(1 / var(--simWidth) * 100vw);
 }
 
-#menuViewMenuButton {
+#menuViewMenuButton,
+#clearSearchButton {
   background-color: rgba(255, 255, 255, 0.5);
 }
 
-#menuViewMenuButton:active {
+#menuViewMenuButton:active,
+#clearSearchButton:active {
   background-color: rgba(255, 255, 255, 0.75);
 }

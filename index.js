@@ -58,7 +58,7 @@ window.addEventListener("appinstalled", () => {
 // ======= SONG FETCHING  ======
 // =============================
 
-import { songs, requestSong, dislikeSong, likeSong } from "./backend.js";
+import { songs, requestSong, dislikeSong, likeSong, requestSongList, requestPlaylistList } from "./backend.js";
 import { debug } from "./globalSettings.js";
 
 let mainAudio = null;
@@ -80,11 +80,11 @@ const formatDate = (dateStr) => {
 };
 
 async function fetchAndDisplaySong(songName, divID) {
-    
+
     // UI Lock for if card is still loading
     if (divID === "mainCard") {
-    cardIsLoading = true;
-}
+        cardIsLoading = true;
+    }
 
     const url = `https://itunes.apple.com/search?term=${encodeURIComponent(songName)}`;
 
@@ -143,8 +143,8 @@ async function fetchAndDisplaySong(songName, divID) {
         if (divID === "mainCard") setupMainAudio(song.previewUrl);
 
         if (divID === "mainCard") {
-    cardIsLoading = false;
-}
+            cardIsLoading = false;
+        }
 
     } catch (err) {
         console.error("Error fetching data:", err, songName);
@@ -153,14 +153,14 @@ async function fetchAndDisplaySong(songName, divID) {
 }
 
 function handleNoSong(divID) {
-    
+
     if (debug) console.warn("❌ No song results found – skipping...");
 
     if (divID === "mainCard") {
-    cardIsLoading = true;
-}
+        cardIsLoading = true;
+    }
 
-    
+
     nextSong = requestSong();
 
     // Immediately try to fetch the next one
@@ -572,8 +572,8 @@ document.getElementById("dislike-btn").addEventListener("click", () => {
 
     // 🛑 Prevent spam / double-taps during animation
     if (isCardAnimating || cardIsLoading) {
-    console.warn("⏳ Card still loading, ignoring swipe.");
-    return;
+        console.warn("⏳ Card still loading, ignoring swipe.");
+        return;
     }
 
     isCardAnimating = true;
@@ -611,8 +611,8 @@ document.getElementById("like-btn").addEventListener("click", () => {
 
     // 🛑 Prevent double-taps while swipe animation is running
     if (isCardAnimating || cardIsLoading) {
-    console.warn("⏳ Card still loading, ignoring swipe.");
-    return;
+        console.warn("⏳ Card still loading, ignoring swipe.");
+        return;
     }
 
     isCardAnimating = true;
@@ -905,6 +905,345 @@ function populateList() {
 }
 
 
+const cardViewMenuButton = document.getElementById('cardViewMenuButton');
+
+// By default, selectedPlaylistIndex is 0 ("All")
+let selectedPlaylistIndex = 0;
+let playlistDropdownExpanded = false;
+
+// Utility to render the playlist selection dropdown UI, moving the selected item to top etc.
+function renderPlaylistSelection(playlists) {
+    const playlistSelectionDiv = document.getElementById("playlistSelection");
+    playlistSelectionDiv.innerHTML = "";
+
+    // In expanded mode, show all playlists in original order (each clickable).
+    // In collapsed mode, show only the selected one at top, others hidden.
+    let sortedPlaylists, effectiveLength;
+    if (playlistDropdownExpanded) {
+        sortedPlaylists = [
+            playlists[selectedPlaylistIndex],
+            ...playlists.filter((_, i) => i !== selectedPlaylistIndex)
+        ];
+        effectiveLength = sortedPlaylists.length;
+    } else {
+        sortedPlaylists = [playlists[selectedPlaylistIndex]]; // just the selected one
+        effectiveLength = 1;
+    }
+
+    for (let idxSorted = 0; idxSorted < effectiveLength; ++idxSorted) {
+        const playlistObj = sortedPlaylists[idxSorted];
+        // Find the original index (in playlists) in either expanded or collapsed mode
+        const idx = playlistDropdownExpanded
+            ? idxSorted
+            : selectedPlaylistIndex;
+
+        if (!playlistObj) continue; // defensive
+
+        const itemDiv = document.createElement("div");
+        itemDiv.classList.add("playlistSelectionItem");
+
+        // Styling for "unselected"
+        if (!playlistDropdownExpanded) {
+            // Collapsed mode → only the selected item should be visible
+            if (idx !== selectedPlaylistIndex) {
+                itemDiv.classList.add("unselected");
+            }
+        }
+
+        const emojiP = document.createElement("p");
+        emojiP.classList.add("playlistEmoji");
+        emojiP.textContent = playlistObj.emoji || "🎵";
+
+        const nameP = document.createElement("p");
+        nameP.classList.add("playlistName");
+        nameP.textContent = playlistObj.name;
+
+        itemDiv.appendChild(emojiP);
+        itemDiv.appendChild(nameP);
+
+        // Add click handler for each option to allow switching playlists (skip if already selected)
+        itemDiv.addEventListener("click", () => {
+            if (selectedPlaylistIndex !== idx) {
+                selectedPlaylistIndex = idx;
+
+                // Collapse dropdown
+                playlistDropdownExpanded = false;
+
+                // On collapse: re-render, selected at top, only that one not unselected
+                renderPlaylistSelection(playlists);
+
+                // Update style for dropdown
+                const playlistSelection = document.getElementById("playlistSelection");
+                playlistSelection.style.height = "";
+                playlistSelection.style.removeProperty("height");
+                const dropdown = document.getElementById("playlistSelectionDropdown");
+                if (dropdown) {
+                    dropdown.style.transform = "";
+                    dropdown.style.top = "";
+                }
+
+                // Render list for new playlist selection
+                renderSongList(playlists, selectedPlaylistIndex);
+            }
+        });
+
+        playlistSelectionDiv.appendChild(itemDiv);
+    }
+}
+
+// Handle opening the selection UI via the menu button
+cardViewMenuButton.addEventListener("click", () => {
+    const playlistSelectionDiv = document.getElementById("playlistSelection");
+    if (!playlistSelectionDiv) return;
+
+    // Get playlists fresh every time
+    const playlists = requestPlaylistList();
+
+    playlistDropdownExpanded = false;
+    renderPlaylistSelection(playlists);
+
+    // Render list on open to reflect the currently selected playlist
+    renderSongList(playlists, selectedPlaylistIndex);
+});
+
+// Accepts playlists array and selected index; does NOT use any cachedPlaylists
+async function renderSongList(playlists, playlistIdx = selectedPlaylistIndex) {
+    const listItemsDiv = document.getElementById("listItems");
+    if (!listItemsDiv) return;
+
+    // Clear any existing items
+    listItemsDiv.innerHTML = "";
+
+    // Get the requested playlist by name if needed
+    let playlistArr;
+    if (typeof requestSongList === "function" && requestSongList.length > 0 && playlists && playlists.length > 0) {
+        const playlistName = playlists[playlistIdx]?.name || "All";
+        playlistArr = requestSongList(playlistName);
+    } else {
+        playlistArr = requestSongList();
+    }
+
+    // Defensive: expect array with at least one item
+    const playlistObj = Array.isArray(playlistArr) && playlistArr.length > 0 ? playlistArr[0] : null;
+    if (!playlistObj || !Array.isArray(playlistObj.songList)) {
+        // Nothing to render
+        return;
+    }
+
+    const songList = playlistObj.songList;
+
+    // Helper to fetch and render a single song entry
+    const renderSongMenuItem = async (song, appendHr = false) => {
+        const query = song.title || song.name || "";
+        console.log(song);
+        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}`;
+        let songData = null;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            const results = (data.results || []).filter((item) => item.kind === "song");
+            if (!results.length) {
+                songData = null;
+            } else {
+                songData = results[0];
+            }
+        } catch (e) {
+            songData = null;
+        }
+
+        const menuItem = document.createElement("div");
+        menuItem.className = "menuItem";
+
+        // --- part1: image and songInfo ---
+        const part1 = document.createElement("div");
+        part1.className = "part1";
+        const img = document.createElement("img");
+        img.className = "menuItemImage";
+
+        if (songData && songData.artworkUrl100) {
+            img.src = songData.artworkUrl100.replace("100x100", "1500x1500");
+            img.alt = `${songData.trackName} by ${songData.artistName}`;
+        } else {
+            img.src = song.image || "";
+            img.alt = query ? query : "Unknown";
+        }
+
+        const songInfo = document.createElement("p");
+        songInfo.className = "songInfo";
+        songInfo.innerHTML = `
+            Genre: ${songData?.primaryGenreName || song.genre || "Unknown"}<br />
+            Rank: ${song.rank != null ? song.rank : "-"}<br />
+            Release: ${songData?.releaseDate
+                ? (typeof formatDate === "function" ? formatDate(songData.releaseDate) : songData.releaseDate.slice(0, 10))
+                : (song.release || "")
+            }
+        `;
+
+        part1.appendChild(img);
+        part1.appendChild(songInfo);
+
+        // --- part2: title and artist ---
+        const part2 = document.createElement("div");
+        part2.className = "part2";
+        const title = document.createElement("p");
+        title.className = "title";
+        title.textContent = songData?.trackName || song.title || "Untitled";
+
+        const artist = document.createElement("p");
+        artist.className = "artist";
+        artist.textContent = songData?.artistName || song.artist || "";
+
+        part2.appendChild(title);
+        part2.appendChild(artist);
+
+        // --- part3: star, share, qrCode ---
+        const part3 = document.createElement("div");
+        part3.className = "part3";
+
+        // Star element
+        const starDiv = document.createElement("div");
+        starDiv.className = "star";
+        if (song.favorited) {
+            starDiv.classList.add("starred");
+        }
+        if (song.favorited) {
+            starDiv.innerHTML = `
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M3 3l18 18" />
+                <path
+                  d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917"
+                />
+              </svg>
+            `;
+        } else {
+            starDiv.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                    <path
+                    d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"
+                    />
+                </svg>
+            `;
+        }
+        part3.appendChild(starDiv);
+
+        // Share element
+        const shareDiv = document.createElement("div");
+        shareDiv.className = "share";
+        shareDiv.innerHTML = `
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1" />
+                <path d="M12 14v-11" />
+                <path d="M9 6l3 -3l3 3" />
+            </svg>
+        `;
+        part3.appendChild(shareDiv);
+
+        // QR code element
+        const qrCodeDiv = document.createElement("div");
+        qrCodeDiv.className = "qrCode";
+        qrCodeDiv.innerHTML = `
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
+                <path d="M7 17l0 .01" />
+                <path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
+                <path d="M7 7l0 .01" />
+                <path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
+                <path d="M17 7l0 .01" />
+                <path d="M14 14l3 0" />
+                <path d="M20 14l0 .01" />
+                <path d="M14 14l0 3" />
+                <path d="M14 20l3 0" />
+                <path d="M17 17l3 0" />
+                <path d="M20 17l0 3" />
+            </svg>
+        `;
+        part3.appendChild(qrCodeDiv);
+
+        menuItem.appendChild(part1);
+        menuItem.appendChild(part2);
+        menuItem.appendChild(part3);
+
+        listItemsDiv.appendChild(menuItem);
+
+        if (appendHr) {
+            const hr = document.createElement("hr");
+            menuItem.insertAdjacentElement("afterend", hr);
+        }
+    };
+
+    // Sequential fetching: render as results come back
+    for (let i = 0; i < songList.length; ++i) {
+        await renderSongMenuItem(songList[i], i < songList.length - 1);
+    }
+}
+
+(function setupClearButtonHandler() {
+    const clearButton = document.getElementById("clearSearchButton");
+    const searchInput = document.getElementById("menuTextInput");
+    if (!clearButton || !searchInput) return;
+    clearButton.addEventListener("click", function () {
+        searchInput.value = "";
+        const event = new Event('input', { bubbles: true });
+        searchInput.dispatchEvent(event);
+    });
+})();
+
+(function () {
+    // Now this dropdown toggler will set the expanded/collapsed state and call renderPlaylistSelection.
+    document.getElementById("playlistSelectionDropdown")?.addEventListener("click", function () {
+        const playlistSelection = document.getElementById("playlistSelection");
+        if (!playlistSelection) return;
+        const playlists = requestPlaylistList();
+        playlistDropdownExpanded = !playlistDropdownExpanded;
+
+        if (playlistDropdownExpanded) {
+            playlistSelection.style.height = "auto";
+            const dropdown = document.getElementById("playlistSelectionDropdown");
+            if (dropdown) {
+                dropdown.style.transform = "rotate(180deg)";
+                dropdown.style.top = "calc((16 - 1) / var(--simWidth) * 100vw)";
+            }
+        } else {
+            playlistSelection.style.height = "";
+            playlistSelection.style.removeProperty("height");
+            const dropdown = document.getElementById("playlistSelectionDropdown");
+            if (dropdown) {
+                dropdown.style.transform = "";
+                dropdown.style.top = "";
+            }
+        }
+        renderPlaylistSelection(playlists);
+    });
+})();
 
 // =============================
 // =======  BORDER RADIUS ======
