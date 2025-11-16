@@ -1,73 +1,152 @@
+// =============================
+// ========== IMPORTS ==========
+// =============================
 import { updateTasteProfile } from "./backend/songify_logic.js";
-
-
-let isCardAnimating = false;
-let cardIsLoading = false;
+import { songs, requestSong, dislikeSong, likeSong, requestSongList, requestPlaylistList } from "./backend.js";
+import { debug } from "./globalSettings.js";
 
 // =============================
-// =======  PWA INSTALL  =======
+// ========= CONSTANTS =========
 // =============================
-
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js");
-}
 
 const installBtn = document.getElementById("install-btn");
+const cardViewMenuButton = document.getElementById('cardViewMenuButton');
+
+const menuToggleElements = document.querySelectorAll('.menuToggle');
+
+const nextCardHTML = `
+  <div class="card" id="nextCard" style="opacity: 0;">
+    <img />
+    <div class="explicitcy">
+      <p class="title">Loading...</p>
+    </div>
+    <p class="artist">Loading...</p>
+    <div class="seekbarContainer">
+      <input type="range" class="seekbar" min="0" max="30" value="0" step="0.1" />
+      <div class="seekbarLabels">
+        <span class="currentTimeLabel">00:00</span>
+        <span class="durationLabel">00:30</span>
+      </div>
+    </div>
+    <div class="playerContainer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="play active">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+      </svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pause">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+        <path d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
+      </svg>
+    </div>
+    <p class="details">Loading...<br />Loading...</p>
+    <div class="volumeContainer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path d="M15 8a5 5 0 0 1 0 8" />
+        <path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
+      </svg>
+      <input type="range" class="volume" min="0" max="100" value="50" step="0.1" />
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path d="M15 8a5 5 0 0 1 0 8" />
+        <path d="M17.7 5a9 9 0 0 1 0 14" />
+        <path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
+      </svg>
+    </div>
+  </div>
+`;
+
+const dislikeIcon = `
+<div class="dislikePopup iconPopup">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path
+            d="M13 21.008a3 3 0 0 0 2.995 -2.823l.005 -.177v-4h2a3 3 0 0 0 2.98 -2.65l.015 -.173l.005 -.177l-.02 -.196l-1.006 -5.032c-.381 -1.625 -1.502 -2.796 -2.81 -2.78l-.164 .008h-8a1 1 0 0 0 -.993 .884l-.007 .116l.001 9.536a1 1 0 0 0 .5 .866a2.998 2.998 0 0 1 1.492 2.396l.007 .202v1a3 3 0 0 0 3 3z"
+        />
+        <path
+            d="M5 14.008a1 1 0 0 0 .993 -.883l.007 -.117v-9a1 1 0 0 0 -.883 -.993l-.117 -.007h-1a2 2 0 0 0 -1.995 1.852l-.005 .15v7a2 2 0 0 0 1.85 1.994l.15 .005h1z"
+        />
+    </svg>
+</div>
+`;
+
+const likeIcon = `
+<div class="likePopup iconPopup">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path
+            d="M13 3a3 3 0 0 1 2.995 2.824l.005 .176v4h2a3 3 0 0 1 2.98 2.65l.015 .174l.005 .176l-.02 .196l-1.006 5.032c-.381 1.626 -1.502 2.796 -2.81 2.78l-.164 -.008h-8a1 1 0 0 1 -.993 -.883l-.007 -.117l.001 -9.536a1 1 0 0 1 .5 -.865a2.998 2.998 0 0 0 1.492 -2.397l.007 -.202v-1a3 3 0 0 1 3 -3z"
+        />
+        <path
+            d="M5 10a1 1 0 0 1 .993 .883l.007 .117v9a1 1 0 0 1 -.883 .993l-.117 .007h-1a2 2 0 0 1 -1.995 -1.85l-.005 -.15v-7a2 2 0 0 1 1.85 -1.995l.15 -.005h1z"
+        />
+    </svg>
+</div>
+`;
+
+// ==============================
+// ========== STATE =============
+// ==============================
+let isCardAnimating = false;
+let cardIsLoading = false;
+let mainAudio = null;
+let listenStartTime = null;
+let lastImportPercent = 0;
+let mainPreviewUrl = null;
+let mainCardPlaying = false;
+
+let currentSong;
+let nextSong;
+let currentSongJson = {};
+
+let selectedPlaylistIndex = 0;
+let playlistDropdownExpanded = false;
+
+// =============================
+// === PWA INSTALL FUNCTIONS ===
+// =============================
+
 let deferredPrompt = null;
 
-function hideInstallButton() {
-    installBtn.style.display = "none";
-}
-
-function showInstallButton() {
-    installBtn.style.display = "";
-}
-
+function hideInstallButton() { installBtn.style.display = "none"; }
+function showInstallButton() { installBtn.style.display = ""; }
 function checkInstallState() {
     const isStandalone =
         window.matchMedia("(display-mode: standalone)").matches ||
         navigator.standalone === true ||
         document.referrer.includes("android-app://");
-
     if (isStandalone) hideInstallButton();
 }
 
-checkInstallState();
+// Register service worker and handle PWA install UI
+(function initPWA() {
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+    checkInstallState();
 
-window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    showInstallButton();
-});
+    window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        showInstallButton();
+    });
 
-installBtn.addEventListener("click", async () => {
-    if (!deferredPrompt) return;
-    hideInstallButton();
+    installBtn.addEventListener("click", async () => {
+        if (!deferredPrompt) return;
+        hideInstallButton();
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+    });
 
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-});
-
-window.addEventListener("appinstalled", () => {
-    hideInstallButton();
-    deferredPrompt = null;
-});
+    window.addEventListener("appinstalled", () => {
+        hideInstallButton();
+        deferredPrompt = null;
+    });
+})();
 
 // =============================
-// ======= SONG FETCHING  ======
+// ==== UTILITY FUNCTIONS ======
 // =============================
-
-import { songs, requestSong, dislikeSong, likeSong, requestSongList, requestPlaylistList } from "./backend.js";
-import { debug } from "./globalSettings.js";
-
-let mainAudio = null;
-
-// variables for tracking listen %
-let listenStartTime = null;
-let lastImportPercent = 0;
-
-let mainPreviewUrl = null;
 
 const formatDate = (dateStr) => {
     if (!dateStr) return "";
@@ -79,13 +158,19 @@ const formatDate = (dateStr) => {
     });
 };
 
+function formatTime(seconds) {
+    if (isNaN(seconds) || seconds < 0) return "00:00";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+// =============================
+// == SONG FETCHING FUNCTIONS ==
+// =============================
+
 async function fetchAndDisplaySong(songName, divID) {
-
-    // UI Lock for if card is still loading
-    if (divID === "mainCard") {
-        cardIsLoading = true;
-    }
-
+    if (divID === "mainCard") cardIsLoading = true;
     const url = `https://itunes.apple.com/search?term=${encodeURIComponent(songName)}`;
 
     try {
@@ -106,6 +191,7 @@ async function fetchAndDisplaySong(songName, divID) {
 
         if (divID === "mainCard") window.currentSongObject = song;
 
+        // Elements
         const img = card.querySelector("img");
         const titleElem = card.querySelector(".title");
         const artistElem = card.querySelector(".artist");
@@ -135,41 +221,28 @@ async function fetchAndDisplaySong(songName, divID) {
 
         if (detailsElem) {
             detailsElem.innerHTML = `
-          Genre: ${song.primaryGenreName || ""}<br>
-          Release: ${formatDate(song.releaseDate)}
-        `;
+              Genre: ${song.primaryGenreName || ""}<br>
+              Release: ${formatDate(song.releaseDate)}
+            `;
         }
 
         if (divID === "mainCard") setupMainAudio(song.previewUrl);
-
-        if (divID === "mainCard") {
-            cardIsLoading = false;
-        }
+        if (divID === "mainCard") cardIsLoading = false;
 
     } catch (err) {
         console.error("Error fetching data:", err, songName);
     }
-
 }
 
 function handleNoSong(divID) {
-
     if (debug) console.warn("❌ No song results found – skipping...");
-
-    if (divID === "mainCard") {
-        cardIsLoading = true;
-    }
-
-
+    if (divID === "mainCard") cardIsLoading = true;
     nextSong = requestSong();
-
-    // Immediately try to fetch the next one
     fetchAndDisplaySong(nextSong, divID);
-
 }
 
 // =============================
-// ======= AUDIO PLAYER  =======
+// == AUDIO PLAYER MANAGEMENT ==
 // =============================
 
 let playBtn = document.querySelector("#mainCard .play");
@@ -188,13 +261,6 @@ function refreshAudioPlayerElements() {
 
 if (pauseBtn) pauseBtn.style.display = "none";
 
-function formatTime(seconds) {
-    if (isNaN(seconds) || seconds < 0) return "00:00";
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
 function setupMainAudio(previewUrl) {
     if (mainAudio) mainAudio.pause();
     mainPreviewUrl = previewUrl || null;
@@ -204,7 +270,6 @@ function setupMainAudio(previewUrl) {
         resetAudio();
         return;
     }
-
     mainAudio = new Audio(mainPreviewUrl);
     setupAudioProgressTracking(mainAudio);
     setupAudioEndedHandler(mainAudio);
@@ -213,10 +278,8 @@ function setupMainAudio(previewUrl) {
 
 function resetAudio() {
     if (mainAudio) mainAudio.pause();
-
     playBtn.style.display = "";
     pauseBtn.style.display = "none";
-
     if (seekbar) {
         seekbar.value = 0;
         seekbar.max = 30;
@@ -232,7 +295,6 @@ function setupAudioProgressTracking(audio) {
             durationLabel.textContent = formatTime(audio.duration);
         }
     });
-
     audio.addEventListener("timeupdate", () => {
         if (!isNaN(audio.currentTime)) {
             seekbar.value = audio.currentTime;
@@ -243,30 +305,19 @@ function setupAudioProgressTracking(audio) {
 
 function setupAudioEndedHandler(audio) {
     audio.addEventListener("ended", () => {
-
         // 1. Record listen percentage
         try {
             if (window.currentSongObject && listenStartTime) {
                 const totalDuration = audio.duration || 30;
                 const elapsed = (Date.now() - listenStartTime) / 1000;
                 const listenPercent = Math.min((elapsed / totalDuration) * 100, 100);
-
-                updateTasteProfile(window.currentSongObject, {
-                    listen: true,
-                    listenPercent: listenPercent,
-                });
-
+                updateTasteProfile(window.currentSongObject, { listen: true, listenPercent });
                 if (debug) console.log(`🎧 Logged listenPercent: ${listenPercent.toFixed(1)}%`);
             }
         } catch (err) {
             console.warn("⚠️ Listen% tracking error:", err);
         }
-
-        // 2. reset timer
         listenStartTime = null;
-
-
-
         // 3. replay behavior
         if (audio.currentTime !== 0) audio.currentTime = 0;
         if (!audio.paused) {
@@ -284,7 +335,7 @@ function setupAudioPlayerListeners() {
         playBtn.addEventListener("click", () => {
             if (!mainAudio || !mainPreviewUrl) return;
             mainAudio.play();
-            listenStartTime = Date.now(); // start tracking listening time
+            listenStartTime = Date.now();
             playBtn.style.display = "none";
             pauseBtn.style.display = "inline";
             mainCardPlaying = true;
@@ -308,10 +359,8 @@ function setupAudioPlayerListeners() {
             if (!mainAudio) return;
             currentTimeLabel.textContent = formatTime(seekbar.value);
         });
-
         seekbar.addEventListener("change", () => {
             if (!mainAudio) return;
-
             mainAudio.currentTime = seekbar.value;
         });
         seekbar._listenerAttached = true;
@@ -320,23 +369,17 @@ function setupAudioPlayerListeners() {
 
 setupAudioPlayerListeners();
 
+// =============================
+// ======= CARD HEIGHT =========
+// =============================
+
 function lockCardsHeightOnceLoaded(mainEl = null, nextEl = null) {
     const cardsContainer = document.getElementById("cards");
-
     if (cardsContainer.dataset.locked === "true") return;
-
     mainEl ||= document.getElementById("mainCard");
     nextEl ||= document.getElementById("nextCard");
-
     if (!mainEl || !nextEl) return;
-
-    // requestAnimationFrame(() => {
-    //     const maxHeight = Math.max(mainEl.offsetHeight, nextEl.offsetHeight);
-    //     cardsContainer.style.height = `${maxHeight}px`;
-    //     cardsContainer.style.position = "relative";
-    //     cardsContainer.dataset.locked = "true";
-    //     if (debug) console.log(`Cards height locked at ${maxHeight}px`);
-    // });
+    // code was commented, left here
 }
 
 // =============================
@@ -362,103 +405,68 @@ function logListen() {
     listenStartTime = null;
 }
 
-
 // =============================
 // =======  SONG SWITCH   ======
 // =============================
 
-// Global song state variables
-let currentSong;
-let nextSong;
-let currentSongJson = {};
+async function handleSongSwitch(onSongAction) {
+    if (typeof onSongAction === "function") onSongAction(currentSongJson);
 
+    document.querySelectorAll(".iconPopup").forEach(popup => {
+        popup.style.opacity = "0";
+        popup.addEventListener("transitionend", function handler() {
+            popup.removeEventListener("transitionend", handler);
+            popup.remove();
+        });
+    });
 
+    const cardsContainer = document.getElementById("cards");
+    const mainCard = document.getElementById("mainCard");
+    const nextCard = document.getElementById("nextCard");
 
-(async function initSongs() {
-
-    currentSong = requestSong();
-    nextSong = requestSong();
-
+    if (mainCard) {
+        mainCard.remove();
+        if (debug) console.log("Main card removed");
+    }
+    if (nextCard) {
+        nextCard.id = "mainCard";
+    }
+    currentSong = nextSong;
     await fetchAndDisplaySong(currentSong, "mainCard");
-    await fetchAndDisplaySong(nextSong, "nextCard");
+    if (debug) console.log("Song fetched and displayed");
 
-    lockCardsHeightOnceLoaded();
+    const newMainCard = document.getElementById("mainCard");
+    if (newMainCard) {
+        newMainCard.insertAdjacentHTML("beforebegin", nextCardHTML);
+    } else if (cardsContainer) {
+        cardsContainer.insertAdjacentHTML("beforeend", nextCardHTML);
+    }
+    if (typeof window.applySquircles === "function") window.applySquircles();
 
-})();
+    nextSong = requestSong();
+    fetchAndDisplaySong(nextSong, "nextCard");
 
-let nextCardHTML = `
-      <div class="card" id="nextCard" style="opacity: 0;">
-        <img />
-        <div class="explicitcy">
-          <p class="title">Loading...</p>
-        </div>
-        <p class="artist">Loading...</p>
-        <div class="seekbarContainer">
-          <input type="range" class="seekbar" min="0" max="30" value="0" step="0.1" />
-          <div class="seekbarLabels">
-            <span class="currentTimeLabel">00:00</span>
-            <span class="durationLabel">00:30</span>
-          </div>
-        </div>
-        <div class="playerContainer">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="play active">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-            <path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
-          </svg>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pause">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-            <path d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
-            <path d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" />
-          </svg>
-        </div>
-        <p class="details">Loading...<br />Loading...</p>
-        <div class="volumeContainer">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-            <path d="M15 8a5 5 0 0 1 0 8" />
-            <path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
-          </svg>
+    refreshAudioPlayerElements();
+    setupAudioPlayerListeners();
+    attachIOSRangeHandlers();
 
-          <input type="range" class="volume" min="0" max="100" value="50" step="0.1" />
+    document.getElementById("nextCard").style.opacity = "";
 
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-            <path d="M15 8a5 5 0 0 1 0 8" />
-            <path d="M17.7 5a9 9 0 0 1 0 14" />
-            <path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
-          </svg>
-        </div>
-      </div>
-`
+    if (mainCardPlaying && mainAudio) {
+        mainAudio.currentTime = 0;
+        mainAudio.play();
+        if (playBtn && pauseBtn) {
+            playBtn.style.display = "none";
+            pauseBtn.style.display = "inline";
+        }
+    }
+}
 
-const dislikeIcon = `
-<div class="dislikePopup iconPopup">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-        <path
-            d="M13 21.008a3 3 0 0 0 2.995 -2.823l.005 -.177v-4h2a3 3 0 0 0 2.98 -2.65l.015 -.173l.005 -.177l-.02 -.196l-1.006 -5.032c-.381 -1.625 -1.502 -2.796 -2.81 -2.78l-.164 .008h-8a1 1 0 0 0 -.993 .884l-.007 .116l.001 9.536a1 1 0 0 0 .5 .866a2.998 2.998 0 0 1 1.492 2.396l.007 .202v1a3 3 0 0 0 3 3z"
-        />
-        <path
-            d="M5 14.008a1 1 0 0 0 .993 -.883l.007 -.117v-9a1 1 0 0 0 -.883 -.993l-.117 -.007h-1a2 2 0 0 0 -1.995 1.852l-.005 .15v7a2 2 0 0 0 1.85 1.994l.15 .005h1z"
-        />
-    </svg>
-</div>
-`
-const likeIcon = `
-<div class="likePopup iconPopup">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-        <path
-            d="M13 3a3 3 0 0 1 2.995 2.824l.005 .176v4h2a3 3 0 0 1 2.98 2.65l.015 .174l.005 .176l-.02 .196l-1.006 5.032c-.381 1.626 -1.502 2.796 -2.81 2.78l-.164 -.008h-8a1 1 0 0 1 -.993 -.883l-.007 -.117l.001 -9.536a1 1 0 0 1 .5 -.865a2.998 2.998 0 0 0 1.492 -2.397l.007 -.202v-1a3 3 0 0 1 3 -3z"
-        />
-        <path
-            d="M5 10a1 1 0 0 1 .993 .883l.007 .117v9a1 1 0 0 1 -.883 .993l-.117 .007h-1a2 2 0 0 1 -1.995 -1.85l-.005 -.15v-7a2 2 0 0 1 1.85 -1.995l.15 -.005h1z"
-        />
-    </svg>
-</div>
-`
+window.handleSongSwitch = handleSongSwitch;
 
-let mainCardPlaying = false;
+// =============================
+// ========== SWIPES ===========
+// =============================
 
 function showSwipePopup(type) {
     const existing = document.querySelector(".iconPopup");
@@ -472,8 +480,6 @@ function showSwipePopup(type) {
 
     popup.style.opacity = "1";
     popup.style.transition = "opacity 0.4s ease";
-
-    // Fade out after a short delay
     setTimeout(() => {
         popup.style.opacity = "0";
         popup.addEventListener("transitionend", () => popup.remove());
@@ -498,99 +504,25 @@ async function animateSwipe(direction, callback) {
     }
     mainCard.addEventListener('transitionend', cleanupAndCallback);
 }
-
-async function handleSongSwitch(onSongAction) {
-    if (typeof onSongAction === "function") onSongAction(currentSongJson);
-
-    document.querySelectorAll(".iconPopup").forEach(popup => {
-        popup.style.opacity = "0";
-        popup.addEventListener("transitionend", function handler() {
-            popup.removeEventListener("transitionend", handler);
-            popup.remove();
-        });
-    });
-
-    const cardsContainer = document.getElementById("cards");
-    const mainCard = document.getElementById("mainCard");
-    const nextCard = document.getElementById("nextCard");
-
-    if (mainCard) {
-        mainCard.remove();
-        if (debug) console.log("Main card removed");
-    }
-
-    if (nextCard) {
-        nextCard.id = "mainCard";
-    }
-
-    currentSong = nextSong;
-
-    await fetchAndDisplaySong(currentSong, "mainCard");
-    if (debug) console.log("Song fetched and displayed");
-
-    const newMainCard = document.getElementById("mainCard");
-
-    if (newMainCard) {
-        newMainCard.insertAdjacentHTML("beforebegin", nextCardHTML);
-    } else {
-        cardsContainer.insertAdjacentHTML("beforeend", nextCardHTML);
-    }
-    if (typeof window.applySquircles === "function") {
-        window.applySquircles();
-    }
-
-    nextSong = requestSong();
-    fetchAndDisplaySong(nextSong, "nextCard");
-
-    refreshAudioPlayerElements();
-    setupAudioPlayerListeners();
-    attachIOSRangeHandlers();
-
-    // nextCard.style.opacity = ""; // this doesnt work since what the new "nextCard" is doesnt get updated
-    document.getElementById("nextCard").style.opacity = "";
-
-    if (mainCardPlaying && mainAudio) {
-        mainAudio.currentTime = 0;
-        mainAudio.play();
-        if (playBtn && pauseBtn) {
-            playBtn.style.display = "none";
-            pauseBtn.style.display = "inline";
-        }
-    }
-}
-
-window.handleSongSwitch = handleSongSwitch;
 window.animateSwipe = animateSwipe;
 
-// fixed timing for dislike
 document.getElementById("dislike-btn").addEventListener("click", () => {
-    // Make sure we actually have a song first
     if (!window.currentSongObject) {
         console.warn("⚠️ No current song object yet!");
         return;
     }
-
-    // 🛑 Prevent spam / double-taps during animation
     if (isCardAnimating || cardIsLoading) {
         console.warn("⏳ Card still loading, ignoring swipe.");
         return;
     }
-
     isCardAnimating = true;
-
-
-    // Capture BEFORE switching
     const songToDislike = { ...window.currentSongObject };
-
     showSwipePopup("dislike");
-
     animateSwipe("left", () => {
         handleSongSwitch(() => {
             logListen();
             dislikeSong(songToDislike);
         });
-
-        // 🔓 Unlock AFTER layout has fully settled (no timing glitches)
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 isCardAnimating = false;
@@ -599,35 +531,23 @@ document.getElementById("dislike-btn").addEventListener("click", () => {
     });
 });
 
-
-
-
 document.getElementById("like-btn").addEventListener("click", () => {
-    // Ensure current song exists
     if (!window.currentSongObject) {
         console.warn("⚠️ No current song object yet!");
         return;
     }
-
-    // 🛑 Prevent double-taps while swipe animation is running
     if (isCardAnimating || cardIsLoading) {
         console.warn("⏳ Card still loading, ignoring swipe.");
         return;
     }
-
     isCardAnimating = true;
-
     const songToLike = { ...window.currentSongObject };
-
     showSwipePopup("like");
-
     animateSwipe("right", () => {
         handleSongSwitch(() => {
             logListen();
             likeSong(songToLike);
         });
-
-        // 🔓 Unlock ONLY after the DOM has fully updated (prevents the glitch)
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 isCardAnimating = false;
@@ -636,29 +556,383 @@ document.getElementById("like-btn").addEventListener("click", () => {
     });
 });
 
+// =============================
+// ===== MAIN CARD DRAGGING ====
+// =============================
 
+(function setupMainCardDrag() {
+    // Drag-related state
+    let mainCard = document.getElementById("mainCard");
+    let startX = 0, lastX = 0, dragging = false;
+    let cardWidth = mainCard ? mainCard.getBoundingClientRect().width : 0;
+
+    const thresholdFraction = 0.33;
+    const minThresholdPx = 120;
+
+    function setCardTransition(card, on) {
+        card.style.transition = on ? 'transform 0.25s ease-in-out' : 'none';
+    }
+
+    function setCardX(card, x) {
+        const maxAngle = 12;
+        const percentSwiped = Math.abs(x) / window.innerWidth * 4;
+        let iconLocation = document.getElementById("body");
+        let iconPopup = iconLocation.querySelector(".iconPopup");
+
+        if (x === 0 && iconPopup) iconPopup.remove();
+
+        if (x !== 0) {
+            if (iconPopup) iconPopup.remove();
+            if (x > 0) {
+                iconLocation.insertAdjacentHTML("beforeend", likeIcon);
+                let likeIconElement = document.getElementById("mainCard").querySelector(".dislikePopup");
+                iconLocation.querySelector(".likePopup").style.opacity = percentSwiped;
+            }
+            else {
+                iconLocation.insertAdjacentHTML("beforeend", dislikeIcon);
+                let dislikeIconElement = document.getElementById("mainCard").querySelector(".likePopup");
+                iconLocation.querySelector(".dislikePopup").style.opacity = percentSwiped;
+            }
+        }
+        const angle = Math.max(-maxAngle, Math.min(maxAngle, (x / window.innerWidth) * maxAngle));
+        card.style.transform = `translateX(${x}px) rotate(${angle}deg)`;
+    }
+
+    function handleRelease() {
+        if (!mainCard) return;
+        const threshold = Math.max(cardWidth * thresholdFraction, minThresholdPx);
+        setCardTransition(mainCard, true);
+        if (Math.abs(lastX) > threshold) {
+            const off = (lastX > 0) ? window.innerWidth : -window.innerWidth;
+            setCardX(mainCard, off);
+            const handler = () => {
+                if (lastX > 0) {
+                    handleSongSwitch(() => { logListen(); likeSong({ ...window.currentSongObject }); });
+                } else {
+                    handleSongSwitch(() => { logListen(); dislikeSong({ ...window.currentSongObject }); });
+                }
+            };
+            mainCard.addEventListener('transitionend', handler);
+        } else {
+            setCardX(mainCard, 0);
+        }
+    }
+
+    function onTouchStart(e) {
+        if (!mainCard) return;
+        if (e.touches.length > 1) return;
+        const touch = e.touches[0];
+        let el = document.elementFromPoint(touch.clientX, touch.clientY);
+        while (el && el !== mainCard) {
+            if (el.classList && (el.classList.contains("seekbarContainer") || el.classList.contains("volumeContainer"))) {
+                dragging = false;
+                return;
+            }
+            el = el.parentElement;
+        }
+        dragging = true;
+        setCardTransition(mainCard, false);
+        startX = e.touches[0].clientX;
+        lastX = 0;
+    }
+    function onTouchMove(e) {
+        if (!dragging) return;
+        if (e.touches.length > 1) return;
+        if (!mainCard) return;
+        const dx = e.touches[0].clientX - startX;
+        lastX = dx;
+        setCardTransition(mainCard, false);
+        setCardX(mainCard, dx);
+        e.preventDefault();
+    }
+    function onTouchEnd(e) { if (!dragging) return; dragging = false; handleRelease(); }
+    function cleanListeners(card) {
+        card.removeEventListener('touchstart', onTouchStart);
+        card.removeEventListener('touchmove', onTouchMove);
+        card.removeEventListener('touchend', onTouchEnd);
+        card.removeEventListener('touchcancel', onTouchEnd);
+    }
+    function attach() {
+        mainCard = document.getElementById("mainCard");
+        if (!mainCard) return;
+        cleanListeners(mainCard);
+        mainCard.addEventListener('touchstart', onTouchStart, { passive: false });
+        mainCard.addEventListener('touchmove', onTouchMove, { passive: false });
+        mainCard.addEventListener('touchend', onTouchEnd);
+        mainCard.addEventListener('touchcancel', onTouchEnd);
+    }
+    const observer = new MutationObserver(() => { attach(); });
+    const observeTarget = () => {
+        mainCard = document.getElementById("mainCard");
+        if (mainCard) observer.observe(mainCard.parentElement, { childList: true });
+    };
+    attach();
+    observeTarget();
+})();
 
 // =============================
-// =======  TITLE MARQUEE ======
+// ====== MENU TOGGLING ========
+// =============================
+
+menuToggleElements.forEach(el => {
+    el.addEventListener("click", () => {
+        const cardView = document.getElementById("cardView");
+        const menuView = document.getElementById("menuView");
+        if (!cardView || !menuView) return;
+        const cardViewVisible = cardView.style.display !== "none";
+        if (cardViewVisible) {
+            cardView.style.display = "none";
+            menuView.style.display = "";
+        } else {
+            cardView.style.display = "";
+            menuView.style.display = "none";
+        }
+    });
+});
+
+// =============================
+// == SONG MENU & PLAYLIST =====
+// =============================
+function renderPlaylistSelection(playlists) {
+    const playlistSelectionDiv = document.getElementById("playlistSelection");
+    playlistSelectionDiv.innerHTML = "";
+
+    let sortedPlaylists, effectiveLength;
+    if (playlistDropdownExpanded) {
+        sortedPlaylists = [
+            playlists[selectedPlaylistIndex],
+            ...playlists.filter((_, i) => i !== selectedPlaylistIndex)
+        ];
+        effectiveLength = sortedPlaylists.length;
+    } else {
+        sortedPlaylists = [playlists[selectedPlaylistIndex]];
+        effectiveLength = 1;
+    }
+
+    for (let idxSorted = 0; idxSorted < effectiveLength; ++idxSorted) {
+        const playlistObj = sortedPlaylists[idxSorted];
+        const idx = playlistDropdownExpanded
+            ? idxSorted
+            : selectedPlaylistIndex;
+        if (!playlistObj) continue; // defensive
+
+        const itemDiv = document.createElement("div");
+        itemDiv.classList.add("playlistSelectionItem");
+        if (!playlistDropdownExpanded && idx !== selectedPlaylistIndex)
+            itemDiv.classList.add("unselected");
+
+        const emojiP = document.createElement("p");
+        emojiP.classList.add("playlistEmoji");
+        emojiP.textContent = playlistObj.emoji || "🎵";
+
+        const nameP = document.createElement("p");
+        nameP.classList.add("playlistName");
+        nameP.textContent = playlistObj.name;
+
+        itemDiv.appendChild(emojiP);
+        itemDiv.appendChild(nameP);
+
+        itemDiv.addEventListener("click", () => {
+            if (selectedPlaylistIndex !== idx) {
+                selectedPlaylistIndex = idx;
+                playlistDropdownExpanded = false;
+                renderPlaylistSelection(playlists);
+
+                const playlistSelection = document.getElementById("playlistSelection");
+                playlistSelection.style.height = "";
+                playlistSelection.style.removeProperty("height");
+                const dropdown = document.getElementById("playlistSelectionDropdown");
+                if (dropdown) {
+                    dropdown.style.transform = "";
+                    dropdown.style.top = "";
+                }
+                renderSongList(playlists, selectedPlaylistIndex);
+            }
+        });
+        playlistSelectionDiv.appendChild(itemDiv);
+    }
+}
+
+cardViewMenuButton.addEventListener("click", () => {
+    const playlistSelectionDiv = document.getElementById("playlistSelection");
+    if (!playlistSelectionDiv) return;
+    const playlists = requestPlaylistList();
+    playlistDropdownExpanded = false;
+    renderPlaylistSelection(playlists);
+    renderSongList(playlists, selectedPlaylistIndex);
+});
+
+async function renderSongList(playlists, playlistIdx = selectedPlaylistIndex) {
+    const listItemsDiv = document.getElementById("listItems");
+    if (!listItemsDiv) return;
+    listItemsDiv.innerHTML = "";
+
+    let playlistArr;
+    const playlistName = playlists[playlistIdx]?.name || "All";
+    playlistArr = requestSongList(playlistName);
+
+    const playlistObj = Array.isArray(playlistArr) && playlistArr.length > 0 ? playlistArr[0] : null;
+    if (!playlistObj || !Array.isArray(playlistObj.songList)) {
+        return;
+    }
+    const songList = playlistObj.songList;
+
+    const renderSongMenuItem = async (song) => {
+        const query = song.title || song.name || "";
+        if (window.debug) console.log(song);
+        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}`;
+        let songData = null;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            const results = (data.results || []).filter((item) => item.kind === "song");
+            if (!results.length) songData = null;
+            else songData = results[0];
+        } catch (e) { songData = null; }
+
+        // If no iTunes API result, skip this song
+        if (!songData) {
+            return null;
+        }
+
+        const menuItem = document.createElement("div");
+        menuItem.className = "menuItem";
+
+        // part1: image & info
+        const part1 = document.createElement("div");
+        part1.className = "part1";
+        const img = document.createElement("img");
+        img.className = "menuItemImage";
+        img.src = songData.artworkUrl100 ? songData.artworkUrl100.replace("100x100", "1500x1500") : (song.image || "");
+        img.alt = songData.trackName && songData.artistName
+            ? `${songData.trackName} by ${songData.artistName}`
+            : (query ? query : "Unknown");
+
+        const songInfo = document.createElement("p");
+        songInfo.className = "songInfo";
+        songInfo.innerHTML = `
+            Genre: ${songData?.primaryGenreName || song.genre || "Unknown"}<br />
+            Rank: ${song.rank != null ? song.rank : "-"}<br />
+            Release: ${songData?.releaseDate
+                ? (typeof formatDate === "function" ? formatDate(songData.releaseDate) : songData.releaseDate.slice(0, 10))
+                : (song.release || "")
+            }
+        `;
+        part1.appendChild(img);
+        part1.appendChild(songInfo);
+
+        // part2: title & artist
+        const part2 = document.createElement("div");
+        part2.className = "part2";
+        const title = document.createElement("p");
+        title.className = "title";
+        title.textContent = songData?.trackName || song.title || "Untitled";
+        const artist = document.createElement("p");
+        artist.className = "artist";
+        artist.textContent = songData?.artistName || song.artist || "";
+        part2.appendChild(title); part2.appendChild(artist);
+
+        // part3: icons
+        const part3 = document.createElement("div");
+        part3.className = "part3";
+
+        // star
+        const starDiv = document.createElement("div");
+        starDiv.className = "star";
+        if (song.favorited) starDiv.classList.add("starred");
+        if (song.favorited) {
+            starDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 3l18 18" /><path d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917" /></svg>`;
+        }
+        else {
+            starDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"/></svg>`;
+        }
+        part3.appendChild(starDiv);
+
+        // share
+        const shareDiv = document.createElement("div");
+        shareDiv.className = "share";
+        shareDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1" /><path d="M12 14v-11" /><path d="M9 6l3 -3l3 3" /></svg>`;
+        part3.appendChild(shareDiv);
+
+        // qr
+        const qrCodeDiv = document.createElement("div");
+        qrCodeDiv.className = "qrCode";
+        qrCodeDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 17l0 .01" /><path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 7l0 .01" /><path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M17 7l0 .01" /><path d="M14 14l3 0" /><path d="M20 14l0 .01" /><path d="M14 14l0 3" /><path d="M14 20l3 0" /><path d="M17 17l3 0" /><path d="M20 17l0 3" /></svg>`;
+        part3.appendChild(qrCodeDiv);
+
+        menuItem.appendChild(part1); menuItem.appendChild(part2); menuItem.appendChild(part3);
+        return menuItem;
+    };
+
+    for (let i = 0; i < songList.length; ++i) {
+        const menuItem = await renderSongMenuItem(songList[i]);
+        if (menuItem) {
+            if (i > 0) {
+                const hr = document.createElement("hr");
+                listItemsDiv.appendChild(hr);
+            }
+            listItemsDiv.appendChild(menuItem);
+        }
+    }
+}
+
+(function setupClearButtonHandler() {
+    const clearButton = document.getElementById("clearSearchButton");
+    const searchInput = document.getElementById("menuTextInput");
+    if (!clearButton || !searchInput) return;
+    clearButton.addEventListener("click", function () {
+        searchInput.value = "";
+        const event = new Event('input', { bubbles: true });
+        searchInput.dispatchEvent(event);
+    });
+})();
+
+(function () {
+    document.getElementById("playlistSelectionDropdown")?.addEventListener("click", function () {
+        const playlistSelection = document.getElementById("playlistSelection");
+        if (!playlistSelection) return;
+        const playlists = requestPlaylistList();
+        playlistDropdownExpanded = !playlistDropdownExpanded;
+
+        if (playlistDropdownExpanded) {
+            playlistSelection.style.height = "auto";
+            const dropdown = document.getElementById("playlistSelectionDropdown");
+            if (dropdown) {
+                dropdown.style.transform = "rotate(180deg)";
+                dropdown.style.top = "calc((16 - 1) / var(--simWidth) * 100vw)";
+            }
+        } else {
+            playlistSelection.style.height = "";
+            playlistSelection.style.removeProperty("height");
+            const dropdown = document.getElementById("playlistSelectionDropdown");
+            if (dropdown) {
+                dropdown.style.transform = "";
+                dropdown.style.top = "";
+            }
+        }
+        renderPlaylistSelection(playlists);
+    });
+})();
+
+// =============================
+// ======== TITLE MARQUEE ======
 // =============================
 
 function applyTitleMarqueeIfNeeded(el) {
     requestAnimationFrame(() => {
         if (el.scrollWidth <= el.clientWidth + 2) return;
-
         const text = el.textContent;
         const wrapper = document.createElement("div");
         wrapper.className = "marquee";
         const inner = document.createElement("div");
         inner.className = "marquee__inner";
-
         [text, text].forEach((t, i) => {
             const span = document.createElement("span");
             span.textContent = t;
             if (i) span.setAttribute("aria-hidden", "true");
             inner.appendChild(span);
         });
-
         wrapper.appendChild(inner);
         el.textContent = "";
         el.appendChild(wrapper);
@@ -672,17 +946,14 @@ function applyTitleMarqueeIfNeeded(el) {
             const gap = parseFloat(styles.gap || styles.columnGap || "0") || 0;
             const distance = Math.ceil(inner.firstChild.offsetWidth + gap);
             inner.style.setProperty("--marquee-distance", `${distance}px`);
-
             const anim = inner.style.animation;
             inner.style.animation = "none";
             inner.offsetHeight;
             inner.style.animation = anim;
         };
-
         computeDistance();
         window.addEventListener("resize", computeDistance);
         window.addEventListener("orientationchange", computeDistance);
-
         el._cleanupMarquee = () => {
             window.removeEventListener("resize", computeDistance);
             window.removeEventListener("orientationchange", computeDistance);
@@ -696,7 +967,6 @@ function applyTitleMarqueeIfNeeded(el) {
 
 function iosRangeTouchHandler(e) {
     if (e.touches.length > 1) return;
-
     const input = e.target;
     const rect = input.getBoundingClientRect();
     const touch = e.touches[0] || e.changedTouches[0];
@@ -730,519 +1000,18 @@ function attachIOSRangeHandlers() {
         });
     }
 }
-
 attachIOSRangeHandlers();
 
 // =============================
-// == CARD DRAG MOBILE GESTURE =
+// ========= INIT SONGS ========
 // =============================
 
-(function setupMainCardDrag() {
-    let mainCard = document.getElementById("mainCard");
-
-    let startX = 0;
-    let lastX = 0;
-    let dragging = false;
-    let cardWidth = mainCard ? mainCard.getBoundingClientRect().width : 0;
-
-    const thresholdFraction = 0.33;
-    const minThresholdPx = 120;
-
-    function setCardTransition(card, on) {
-        card.style.transition = on ? 'transform 0.25s ease-in-out' : 'none';
-    }
-
-    function setCardX(card, x) {
-        const maxAngle = 12;
-        const percentSwiped = Math.abs(x) / window.innerWidth * 4;
-        let iconLocation = document.getElementById("body");
-        let iconPopup = iconLocation.querySelector(".iconPopup");
-
-        if (x === 0 && iconPopup) {
-            iconPopup.remove();
-        }
-
-        if (x !== 0) {
-            if (iconPopup) iconPopup.remove();
-            if (x > 0) {
-                iconLocation.insertAdjacentHTML("beforeend", likeIcon);
-                let likeIconElement = document.getElementById("mainCard").querySelector(".dislikePopup");
-                iconLocation.querySelector(".likePopup").style.opacity = percentSwiped;
-            }
-            else {
-                iconLocation.insertAdjacentHTML("beforeend", dislikeIcon);
-                let dislikeIconElement = document.getElementById("mainCard").querySelector(".likePopup");
-                iconLocation.querySelector(".dislikePopup").style.opacity = percentSwiped;
-            }
-        }
-
-        const angle = Math.max(-maxAngle, Math.min(maxAngle, (x / window.innerWidth) * maxAngle));
-        card.style.transform = `translateX(${x}px) rotate(${angle}deg)`;
-    }
-
-
-    // function resetCard() {
-    //     if (!mainCard) return;
-    //     setCardTransition(mainCard, true);
-    //     setCardX(mainCard, 0);
-    // }
-
-    function handleRelease() {
-        if (!mainCard) return;
-        const threshold = Math.max(cardWidth * thresholdFraction, minThresholdPx);
-        setCardTransition(mainCard, true);
-        if (Math.abs(lastX) > threshold) {
-            const off = (lastX > 0) ? window.innerWidth : -window.innerWidth;
-            setCardX(mainCard, off);
-            const handler = () => {
-                if (lastX > 0) {
-                    // Swipe right -> LIKE
-                    handleSongSwitch(() => {
-                        logListen();
-                        likeSong({ ...window.currentSongObject });
-                    });
-                } else {
-                    // Swipe left -> DISLIKE
-                    handleSongSwitch(() => {
-                        logListen();
-                        dislikeSong({ ...window.currentSongObject });
-                    });
-                }
-
-            };
-            mainCard.addEventListener('transitionend', handler);
-        } else {
-            setCardX(mainCard, 0);
-        }
-    }
-
-    function onTouchStart(e) {
-        if (!mainCard) return;
-        if (e.touches.length > 1) return;
-        const touch = e.touches[0];
-        let el = document.elementFromPoint(touch.clientX, touch.clientY);
-        while (el && el !== mainCard) {
-            if (el.classList && (el.classList.contains("seekbarContainer") || el.classList.contains("volumeContainer"))) {
-                dragging = false;
-                return;
-            }
-            el = el.parentElement;
-        }
-        dragging = true;
-        setCardTransition(mainCard, false);
-        startX = e.touches[0].clientX;
-        lastX = 0;
-    }
-
-    function onTouchMove(e) {
-        if (!dragging) return;
-        if (e.touches.length > 1) return;
-        if (!mainCard) return;
-        const dx = e.touches[0].clientX - startX;
-        lastX = dx;
-        setCardTransition(mainCard, false);
-        setCardX(mainCard, dx);
-        e.preventDefault();
-    }
-
-    function onTouchEnd(e) {
-        if (!dragging) return;
-        dragging = false;
-        handleRelease();
-    }
-
-    function cleanListeners(card) {
-        card.removeEventListener('touchstart', onTouchStart);
-        card.removeEventListener('touchmove', onTouchMove);
-        card.removeEventListener('touchend', onTouchEnd);
-        card.removeEventListener('touchcancel', onTouchEnd);
-    }
-
-    function attach() {
-        mainCard = document.getElementById("mainCard");
-        if (!mainCard) return;
-        cleanListeners(mainCard);
-        mainCard.addEventListener('touchstart', onTouchStart, { passive: false });
-        mainCard.addEventListener('touchmove', onTouchMove, { passive: false });
-        mainCard.addEventListener('touchend', onTouchEnd);
-        mainCard.addEventListener('touchcancel', onTouchEnd);
-    }
-
-    const observer = new MutationObserver(() => {
-        attach();
-    });
-    const observeTarget = () => {
-        mainCard = document.getElementById("mainCard");
-        if (mainCard) observer.observe(mainCard.parentElement, { childList: true });
-    };
-    attach();
-    observeTarget();
-})();
-
-const menuToggleElements = document.querySelectorAll('.menuToggle');
-menuToggleElements.forEach(el => {
-    el.addEventListener("click", () => {
-        const cardView = document.getElementById("cardView");
-        const menuView = document.getElementById("menuView");
-
-        if (!cardView || !menuView) return;
-
-        // Check current state: is cardView visible?
-        const cardViewVisible = cardView.style.display !== "none";
-
-        if (cardViewVisible) {
-            cardView.style.display = "none";
-            menuView.style.display = "";
-        } else {
-            cardView.style.display = "";
-            menuView.style.display = "none";
-        }
-    });
-});
-
-function populateList() {
-    songs = []
-}
-
-
-const cardViewMenuButton = document.getElementById('cardViewMenuButton');
-
-// By default, selectedPlaylistIndex is 0 ("All")
-let selectedPlaylistIndex = 0;
-let playlistDropdownExpanded = false;
-
-// Utility to render the playlist selection dropdown UI, moving the selected item to top etc.
-function renderPlaylistSelection(playlists) {
-    const playlistSelectionDiv = document.getElementById("playlistSelection");
-    playlistSelectionDiv.innerHTML = "";
-
-    // In expanded mode, show all playlists in original order (each clickable).
-    // In collapsed mode, show only the selected one at top, others hidden.
-    let sortedPlaylists, effectiveLength;
-    if (playlistDropdownExpanded) {
-        sortedPlaylists = [
-            playlists[selectedPlaylistIndex],
-            ...playlists.filter((_, i) => i !== selectedPlaylistIndex)
-        ];
-        effectiveLength = sortedPlaylists.length;
-    } else {
-        sortedPlaylists = [playlists[selectedPlaylistIndex]]; // just the selected one
-        effectiveLength = 1;
-    }
-
-    for (let idxSorted = 0; idxSorted < effectiveLength; ++idxSorted) {
-        const playlistObj = sortedPlaylists[idxSorted];
-        // Find the original index (in playlists) in either expanded or collapsed mode
-        const idx = playlistDropdownExpanded
-            ? idxSorted
-            : selectedPlaylistIndex;
-
-        if (!playlistObj) continue; // defensive
-
-        const itemDiv = document.createElement("div");
-        itemDiv.classList.add("playlistSelectionItem");
-
-        // Styling for "unselected"
-        if (!playlistDropdownExpanded) {
-            // Collapsed mode → only the selected item should be visible
-            if (idx !== selectedPlaylistIndex) {
-                itemDiv.classList.add("unselected");
-            }
-        }
-
-        const emojiP = document.createElement("p");
-        emojiP.classList.add("playlistEmoji");
-        emojiP.textContent = playlistObj.emoji || "🎵";
-
-        const nameP = document.createElement("p");
-        nameP.classList.add("playlistName");
-        nameP.textContent = playlistObj.name;
-
-        itemDiv.appendChild(emojiP);
-        itemDiv.appendChild(nameP);
-
-        // Add click handler for each option to allow switching playlists (skip if already selected)
-        itemDiv.addEventListener("click", () => {
-            if (selectedPlaylistIndex !== idx) {
-                selectedPlaylistIndex = idx;
-
-                // Collapse dropdown
-                playlistDropdownExpanded = false;
-
-                // On collapse: re-render, selected at top, only that one not unselected
-                renderPlaylistSelection(playlists);
-
-                // Update style for dropdown
-                const playlistSelection = document.getElementById("playlistSelection");
-                playlistSelection.style.height = "";
-                playlistSelection.style.removeProperty("height");
-                const dropdown = document.getElementById("playlistSelectionDropdown");
-                if (dropdown) {
-                    dropdown.style.transform = "";
-                    dropdown.style.top = "";
-                }
-
-                // Render list for new playlist selection
-                renderSongList(playlists, selectedPlaylistIndex);
-            }
-        });
-
-        playlistSelectionDiv.appendChild(itemDiv);
-    }
-}
-
-// Handle opening the selection UI via the menu button
-cardViewMenuButton.addEventListener("click", () => {
-    const playlistSelectionDiv = document.getElementById("playlistSelection");
-    if (!playlistSelectionDiv) return;
-
-    // Get playlists fresh every time
-    const playlists = requestPlaylistList();
-
-    playlistDropdownExpanded = false;
-    renderPlaylistSelection(playlists);
-
-    // Render list on open to reflect the currently selected playlist
-    renderSongList(playlists, selectedPlaylistIndex);
-});
-
-// Accepts playlists array and selected index; does NOT use any cachedPlaylists
-async function renderSongList(playlists, playlistIdx = selectedPlaylistIndex) {
-    const listItemsDiv = document.getElementById("listItems");
-    if (!listItemsDiv) return;
-
-    // Clear any existing items
-    listItemsDiv.innerHTML = "";
-
-    // Get the requested playlist by name if needed
-    let playlistArr;
-    if (typeof requestSongList === "function" && requestSongList.length > 0 && playlists && playlists.length > 0) {
-        const playlistName = playlists[playlistIdx]?.name || "All";
-        playlistArr = requestSongList(playlistName);
-    } else {
-        playlistArr = requestSongList();
-    }
-
-    // Defensive: expect array with at least one item
-    const playlistObj = Array.isArray(playlistArr) && playlistArr.length > 0 ? playlistArr[0] : null;
-    if (!playlistObj || !Array.isArray(playlistObj.songList)) {
-        // Nothing to render
-        return;
-    }
-
-    const songList = playlistObj.songList;
-
-    // Helper to fetch and render a single song entry
-    const renderSongMenuItem = async (song, appendHr = false) => {
-        const query = song.title || song.name || "";
-        console.log(song);
-        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}`;
-        let songData = null;
-
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            const results = (data.results || []).filter((item) => item.kind === "song");
-            if (!results.length) {
-                songData = null;
-            } else {
-                songData = results[0];
-            }
-        } catch (e) {
-            songData = null;
-        }
-
-        const menuItem = document.createElement("div");
-        menuItem.className = "menuItem";
-
-        // --- part1: image and songInfo ---
-        const part1 = document.createElement("div");
-        part1.className = "part1";
-        const img = document.createElement("img");
-        img.className = "menuItemImage";
-
-        if (songData && songData.artworkUrl100) {
-            img.src = songData.artworkUrl100.replace("100x100", "1500x1500");
-            img.alt = `${songData.trackName} by ${songData.artistName}`;
-        } else {
-            img.src = song.image || "";
-            img.alt = query ? query : "Unknown";
-        }
-
-        const songInfo = document.createElement("p");
-        songInfo.className = "songInfo";
-        songInfo.innerHTML = `
-            Genre: ${songData?.primaryGenreName || song.genre || "Unknown"}<br />
-            Rank: ${song.rank != null ? song.rank : "-"}<br />
-            Release: ${songData?.releaseDate
-                ? (typeof formatDate === "function" ? formatDate(songData.releaseDate) : songData.releaseDate.slice(0, 10))
-                : (song.release || "")
-            }
-        `;
-
-        part1.appendChild(img);
-        part1.appendChild(songInfo);
-
-        // --- part2: title and artist ---
-        const part2 = document.createElement("div");
-        part2.className = "part2";
-        const title = document.createElement("p");
-        title.className = "title";
-        title.textContent = songData?.trackName || song.title || "Untitled";
-
-        const artist = document.createElement("p");
-        artist.className = "artist";
-        artist.textContent = songData?.artistName || song.artist || "";
-
-        part2.appendChild(title);
-        part2.appendChild(artist);
-
-        // --- part3: star, share, qrCode ---
-        const part3 = document.createElement("div");
-        part3.className = "part3";
-
-        // Star element
-        const starDiv = document.createElement("div");
-        starDiv.className = "star";
-        if (song.favorited) {
-            starDiv.classList.add("starred");
-        }
-        if (song.favorited) {
-            starDiv.innerHTML = `
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                <path d="M3 3l18 18" />
-                <path
-                  d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917"
-                />
-              </svg>
-            `;
-        } else {
-            starDiv.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                    <path
-                    d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"
-                    />
-                </svg>
-            `;
-        }
-        part3.appendChild(starDiv);
-
-        // Share element
-        const shareDiv = document.createElement("div");
-        shareDiv.className = "share";
-        shareDiv.innerHTML = `
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            >
-                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                <path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1" />
-                <path d="M12 14v-11" />
-                <path d="M9 6l3 -3l3 3" />
-            </svg>
-        `;
-        part3.appendChild(shareDiv);
-
-        // QR code element
-        const qrCodeDiv = document.createElement("div");
-        qrCodeDiv.className = "qrCode";
-        qrCodeDiv.innerHTML = `
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            >
-                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                <path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
-                <path d="M7 17l0 .01" />
-                <path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
-                <path d="M7 7l0 .01" />
-                <path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
-                <path d="M17 7l0 .01" />
-                <path d="M14 14l3 0" />
-                <path d="M20 14l0 .01" />
-                <path d="M14 14l0 3" />
-                <path d="M14 20l3 0" />
-                <path d="M17 17l3 0" />
-                <path d="M20 17l0 3" />
-            </svg>
-        `;
-        part3.appendChild(qrCodeDiv);
-
-        menuItem.appendChild(part1);
-        menuItem.appendChild(part2);
-        menuItem.appendChild(part3);
-
-        listItemsDiv.appendChild(menuItem);
-
-        if (appendHr) {
-            const hr = document.createElement("hr");
-            menuItem.insertAdjacentElement("afterend", hr);
-        }
-    };
-
-    // Sequential fetching: render as results come back
-    for (let i = 0; i < songList.length; ++i) {
-        await renderSongMenuItem(songList[i], i < songList.length - 1);
-    }
-}
-
-(function setupClearButtonHandler() {
-    const clearButton = document.getElementById("clearSearchButton");
-    const searchInput = document.getElementById("menuTextInput");
-    if (!clearButton || !searchInput) return;
-    clearButton.addEventListener("click", function () {
-        searchInput.value = "";
-        const event = new Event('input', { bubbles: true });
-        searchInput.dispatchEvent(event);
-    });
-})();
-
-(function () {
-    // Now this dropdown toggler will set the expanded/collapsed state and call renderPlaylistSelection.
-    document.getElementById("playlistSelectionDropdown")?.addEventListener("click", function () {
-        const playlistSelection = document.getElementById("playlistSelection");
-        if (!playlistSelection) return;
-        const playlists = requestPlaylistList();
-        playlistDropdownExpanded = !playlistDropdownExpanded;
-
-        if (playlistDropdownExpanded) {
-            playlistSelection.style.height = "auto";
-            const dropdown = document.getElementById("playlistSelectionDropdown");
-            if (dropdown) {
-                dropdown.style.transform = "rotate(180deg)";
-                dropdown.style.top = "calc((16 - 1) / var(--simWidth) * 100vw)";
-            }
-        } else {
-            playlistSelection.style.height = "";
-            playlistSelection.style.removeProperty("height");
-            const dropdown = document.getElementById("playlistSelectionDropdown");
-            if (dropdown) {
-                dropdown.style.transform = "";
-                dropdown.style.top = "";
-            }
-        }
-        renderPlaylistSelection(playlists);
-    });
+(async function initSongs() {
+    currentSong = requestSong();
+    nextSong = requestSong();
+    await fetchAndDisplaySong(currentSong, "mainCard");
+    await fetchAndDisplaySong(nextSong, "nextCard");
+    lockCardsHeightOnceLoaded();
 })();
 
 // =============================
