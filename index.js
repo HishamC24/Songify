@@ -619,24 +619,31 @@ menuToggleElements.forEach(el => {
 function renderPlaylistSelection(playlists) {
     const playlistSelectionDiv = document.getElementById("playlistSelection");
     playlistSelectionDiv.innerHTML = "";
-    let sortedPlaylists, effectiveLength;
+    let sortedPlaylists, effectiveLength, indexMap;
     if (playlistDropdownExpanded) {
+        // Build sortedPlaylists & a map from displayed idx -> real index
         sortedPlaylists = [
             playlists[selectedPlaylistIndex],
             ...playlists.filter((_, i) => i !== selectedPlaylistIndex)
         ];
+        // Build a mapping from sorted index to original playlist index
+        indexMap = [selectedPlaylistIndex];
+        for (let i = 0; i < playlists.length; ++i) {
+            if (i !== selectedPlaylistIndex) indexMap.push(i);
+        }
         effectiveLength = sortedPlaylists.length;
     } else {
         sortedPlaylists = [playlists[selectedPlaylistIndex]];
+        indexMap = [selectedPlaylistIndex];
         effectiveLength = 1;
     }
     for (let idxSorted = 0; idxSorted < effectiveLength; ++idxSorted) {
         const playlistObj = sortedPlaylists[idxSorted];
-        const idx = playlistDropdownExpanded ? idxSorted : selectedPlaylistIndex;
+        const realIdx = indexMap[idxSorted]; // always the real playlist index in playlists array
         if (!playlistObj) continue;
         const itemDiv = document.createElement("div");
         itemDiv.classList.add("playlistSelectionItem");
-        if (!playlistDropdownExpanded && idx !== selectedPlaylistIndex)
+        if (!playlistDropdownExpanded && realIdx !== selectedPlaylistIndex)
             itemDiv.classList.add("unselected");
         const emojiP = document.createElement("p");
         emojiP.classList.add("playlistEmoji");
@@ -647,8 +654,8 @@ function renderPlaylistSelection(playlists) {
         itemDiv.appendChild(emojiP);
         itemDiv.appendChild(nameP);
         itemDiv.addEventListener("click", () => {
-            if (selectedPlaylistIndex !== idx) {
-                selectedPlaylistIndex = idx;
+            if (selectedPlaylistIndex !== realIdx) {
+                selectedPlaylistIndex = realIdx;
                 playlistDropdownExpanded = false;
                 renderPlaylistSelection(playlists);
                 const playlistSelection = document.getElementById("playlistSelection");
@@ -673,31 +680,73 @@ cardViewMenuButton.addEventListener("click", () => {
     renderPlaylistSelection(playlists);
     renderSongList(playlists, selectedPlaylistIndex);
 });
+
+// ------------ DROPDOWN EXPAND/COLLAPSE LOGIC REWRITE --------------
 (function () {
-    document.getElementById("playlistSelectionDropdown")?.addEventListener("click", function () {
-        const playlistSelection = document.getElementById("playlistSelection");
-        if (!playlistSelection) return;
-        const playlists = requestPlaylistList();
-        playlistDropdownExpanded = !playlistDropdownExpanded;
-        if (playlistDropdownExpanded) {
-            playlistSelection.style.height = "auto";
-            const dropdown = document.getElementById("playlistSelectionDropdown");
+    const dropdown = document.getElementById("playlistSelectionDropdown");
+    const selectionDiv = document.getElementById("playlistSelection");
+
+    // Store a reference to the SVG icon inside the dropdown button (assumes first <svg>)
+    let dropdownIcon;
+    if (dropdown) {
+        dropdownIcon = dropdown.querySelector("svg") || dropdown;
+    }
+
+    // If the dropdown is not expanded, clicking anywhere on the selectionDiv (excluding dropdown/its children) should expand
+    function onSelectionDivClick(e) {
+        // Only expand if currently collapsed
+        if (!playlistDropdownExpanded) {
+            if (dropdown && dropdown.contains(e.target)) return; // ignore if clicked on dropdown button itself
+            const playlists = requestPlaylistList();
+            playlistDropdownExpanded = true;
+            selectionDiv.style.height = "auto";
             if (dropdown) {
                 dropdown.style.transform = "rotate(180deg)";
                 dropdown.style.top = "calc((16 - 1) / var(--simWidth) * 100vw)";
             }
-        } else {
-            playlistSelection.style.height = "";
-            playlistSelection.style.removeProperty("height");
-            const dropdown = document.getElementById("playlistSelectionDropdown");
-            if (dropdown) {
-                dropdown.style.transform = "";
-                dropdown.style.top = "";
+            renderPlaylistSelection(playlists);
+        }
+    }
+
+    // Only collapse if clicked exactly on the icon (svg or dropdown element itself) and currently expanded
+    function onDropdownIconClick(e) {
+        // Only collapse if expanded
+        if (playlistDropdownExpanded) {
+            // Allow clicking either the <svg> or the button (if either is clicked directly or as a descendant)
+            // So, require the click to be on the dropdown button or its svg/icon
+            if (
+                (e.target === dropdownIcon) ||
+                (dropdownIcon && dropdownIcon.contains && dropdownIcon.contains(e.target)) ||
+                (e.target === dropdown)
+            ) {
+                const playlists = requestPlaylistList();
+                playlistDropdownExpanded = false;
+                selectionDiv.style.height = "";
+                selectionDiv.style.removeProperty("height");
+                if (dropdown) {
+                    dropdown.style.transform = "";
+                    dropdown.style.top = "";
+                }
+                renderPlaylistSelection(playlists);
             }
         }
-        renderPlaylistSelection(playlists);
-    });
+    }
+
+    if (selectionDiv) {
+        // Remove any existing event listeners before re-attaching
+        selectionDiv.addEventListener("click", onSelectionDivClick, true);
+    }
+    if (dropdown) {
+        dropdown.addEventListener("click", onDropdownIconClick, true);
+        // Also handle clicks on the SVG icon if dropdown is a button wrapping it
+        if (dropdownIcon && dropdownIcon !== dropdown) {
+            dropdownIcon.addEventListener("click", onDropdownIconClick, true);
+        }
+    }
 })();
+
+// ---------------------------------------------------------------
+
 (function setupClearButtonHandler() {
     const clearButton = document.getElementById("clearSearchButton");
     const searchInput = document.getElementById("menuTextInput");
@@ -708,25 +757,6 @@ cardViewMenuButton.addEventListener("click", () => {
         searchInput.dispatchEvent(event);
     });
 })();
-// Fix: Ensure selectedPlaylistIndex is updated when choosing an item in the playlist dropdown
-function renderPlaylistSelection(playlists) {
-    const playlistSelectionDiv = document.getElementById("playlistSelection");
-    if (!playlistSelectionDiv) return;
-    playlistSelectionDiv.innerHTML = "";
-    playlists.forEach((playlist, idx) => {
-        const itemDiv = document.createElement("div");
-        itemDiv.className = "playlistMenuItem" + (idx === selectedPlaylistIndex ? " selected" : "");
-        itemDiv.textContent = `${playlist.emoji ? playlist.emoji + " " : ""}${playlist.name}`;
-        itemDiv.addEventListener("click", function () {
-            // Update selectedPlaylistIndex here so selection persists and works on subsequent opens
-            selectedPlaylistIndex = idx;
-            playlistDropdownExpanded = false;
-            renderPlaylistSelection(playlists);
-            renderSongList(playlists, selectedPlaylistIndex);
-        });
-        playlistSelectionDiv.appendChild(itemDiv);
-    });
-}
 
 async function renderSongList(playlists, playlistIdx = selectedPlaylistIndex) {
     const listItemsDiv = document.getElementById("listItems");
