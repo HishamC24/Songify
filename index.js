@@ -1,17 +1,15 @@
-// =============================
-// ========== IMPORTS ==========
-// =============================
+// ==============================
+// ===== IMPORTS & GLOBALS ======
+// ==============================
 import { updateTasteProfile } from "./backend/songify_logic.js";
 import { songs, requestSong, dislikeSong, likeSong, requestSongList, requestPlaylistList } from "./backend.js";
 import { debug } from "./globalSettings.js";
 
-// =============================
-// ========= CONSTANTS =========
-// =============================
-
+// ========================
+// ===== CONSTANTS  =======
+// ========================
 const installBtn = document.getElementById("install-btn");
 const cardViewMenuButton = document.getElementById('cardViewMenuButton');
-
 const menuToggleElements = document.querySelectorAll('.menuToggle');
 
 const nextCardHTML = `
@@ -95,59 +93,16 @@ let listenStartTime = null;
 let lastImportPercent = 0;
 let mainPreviewUrl = null;
 let mainCardPlaying = false;
-
 let currentSong;
 let nextSong;
 let currentSongJson = {};
-
 let selectedPlaylistIndex = 0;
 let playlistDropdownExpanded = false;
-
-// =============================
-// === PWA INSTALL FUNCTIONS ===
-// =============================
-
 let deferredPrompt = null;
 
-function hideInstallButton() { installBtn.style.display = "none"; }
-function showInstallButton() { installBtn.style.display = ""; }
-function checkInstallState() {
-    const isStandalone =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        navigator.standalone === true ||
-        document.referrer.includes("android-app://");
-    if (isStandalone) hideInstallButton();
-}
-
-// Register service worker and handle PWA install UI
-(function initPWA() {
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
-    checkInstallState();
-
-    window.addEventListener("beforeinstallprompt", (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        showInstallButton();
-    });
-
-    installBtn.addEventListener("click", async () => {
-        if (!deferredPrompt) return;
-        hideInstallButton();
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-    });
-
-    window.addEventListener("appinstalled", () => {
-        hideInstallButton();
-        deferredPrompt = null;
-    });
-})();
-
-// =============================
-// ==== UTILITY FUNCTIONS ======
-// =============================
-
+// ==============================
+// ==== UTILITY FUNCTIONS  ======
+// ==============================
 const formatDate = (dateStr) => {
     if (!dateStr) return "";
     const d = new Date(dateStr);
@@ -157,30 +112,69 @@ const formatDate = (dateStr) => {
         year: "numeric",
     });
 };
-
 function formatTime(seconds) {
     if (isNaN(seconds) || seconds < 0) return "00:00";
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
+function showCopyToast(message = "Link copied") {
+    const toast = document.createElement("div");
+    toast.className = "copyToast";
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => { toast.classList.add("show"); });
+    setTimeout(() => {
+        toast.classList.remove("show");
+        toast.addEventListener("transitionend", () => toast.remove());
+    }, 1600);
+}
 
-// =============================
-// == SONG FETCHING FUNCTIONS ==
-// =============================
+// ==============================
+// ==== PWA INSTALL LOGIC  ======
+// ==============================
+function hideInstallButton() { installBtn.style.display = "none"; }
+function showInstallButton() { installBtn.style.display = ""; }
+function checkInstallState() {
+    const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        navigator.standalone === true ||
+        document.referrer.includes("android-app://");
+    if (isStandalone) hideInstallButton();
+}
+(function initPWA() {
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+    checkInstallState();
+    window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        showInstallButton();
+    });
+    installBtn.addEventListener("click", async () => {
+        if (!deferredPrompt) return;
+        hideInstallButton();
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+    });
+    window.addEventListener("appinstalled", () => {
+        hideInstallButton();
+        deferredPrompt = null;
+    });
+})();
 
+// =====================================
+// ==== SONG FETCHING / LOADING ========
+// =====================================
 async function fetchAndDisplaySong(songName, divID) {
     if (divID === "mainCard") cardIsLoading = true;
     const url = `https://itunes.apple.com/search?term=${encodeURIComponent(songName)}`;
-
     try {
         const response = await fetch(url);
         const data = await response.json();
-        
         if (debug) console.log(data, songName);
         const results = (data.results || []).filter((item) => item.kind === "song");
         if (!results.length) return handleNoSong(divID);
-
         const song = results[0];
         currentSongJson = song;
         if (debug) console.log(song.trackName, "-", song.artistName);
@@ -189,27 +183,22 @@ async function fetchAndDisplaySong(songName, divID) {
             if (debug) console.warn("No such div ID:", divID);
             return;
         }
-
         if (divID === "mainCard") window.currentSongObject = song;
-
         // Elements
         const img = card.querySelector("img");
         const titleElem = card.querySelector(".title");
         const artistElem = card.querySelector(".artist");
         const explicitElem = card.querySelector(".explicitcy");
         const detailsElem = card.querySelector(".details");
-
         if (img) {
             img.src = song.artworkUrl100.replace("100x100", "1500x1500");
             img.alt = `${song.trackName} by ${song.artistName}`;
         }
-
         if (titleElem) {
             titleElem.textContent = song.trackName;
             applyTitleMarqueeIfNeeded(titleElem);
         }
         if (artistElem) artistElem.textContent = song.artistName;
-
         if (explicitElem) {
             explicitElem.querySelectorAll(".explicit-marker").forEach((el) => el.remove());
             if (song.trackExplicitness === "explicit") {
@@ -219,22 +208,18 @@ async function fetchAndDisplaySong(songName, divID) {
                 explicitElem.prepend(marker);
             }
         }
-
         if (detailsElem) {
             detailsElem.innerHTML = `
               Genre: ${song.primaryGenreName || ""}<br>
               Release: ${formatDate(song.releaseDate)}
             `;
         }
-
         if (divID === "mainCard") setupMainAudio(song.previewUrl);
         if (divID === "mainCard") cardIsLoading = false;
-
     } catch (err) {
         console.error("Error fetching data:", err, songName);
     }
 }
-
 function handleNoSong(divID) {
     if (debug) console.warn("❌ No song results found – skipping...");
     if (divID === "mainCard") cardIsLoading = true;
@@ -242,10 +227,9 @@ function handleNoSong(divID) {
     fetchAndDisplaySong(nextSong, divID);
 }
 
-// =============================
-// == AUDIO PLAYER MANAGEMENT ==
-// =============================
-
+// ==============================
+// ==== AUDIO PLAYER ============
+// ==============================
 let playBtn = document.querySelector("#mainCard .play");
 let pauseBtn = document.querySelector("#mainCard .pause");
 let seekbar = document.querySelector("#mainCard .seekbar");
@@ -259,13 +243,10 @@ function refreshAudioPlayerElements() {
     currentTimeLabel = document.querySelector("#mainCard .currentTimeLabel");
     durationLabel = document.querySelector("#mainCard .durationLabel");
 }
-
 if (pauseBtn) pauseBtn.style.display = "none";
-
 function setupMainAudio(previewUrl) {
     if (mainAudio) mainAudio.pause();
     mainPreviewUrl = previewUrl || null;
-
     if (!mainPreviewUrl) {
         mainAudio = null;
         resetAudio();
@@ -276,7 +257,6 @@ function setupMainAudio(previewUrl) {
     setupAudioEndedHandler(mainAudio);
     resetAudio();
 }
-
 function resetAudio() {
     if (mainAudio) mainAudio.pause();
     playBtn.style.display = "";
@@ -288,7 +268,6 @@ function resetAudio() {
     if (currentTimeLabel) currentTimeLabel.textContent = "00:00";
     if (durationLabel) durationLabel.textContent = "00:30";
 }
-
 function setupAudioProgressTracking(audio) {
     audio.addEventListener("loadedmetadata", () => {
         if (seekbar && !isNaN(audio.duration)) {
@@ -303,10 +282,8 @@ function setupAudioProgressTracking(audio) {
         }
     });
 }
-
 function setupAudioEndedHandler(audio) {
     audio.addEventListener("ended", () => {
-        // 1. Record listen percentage
         try {
             if (window.currentSongObject && listenStartTime) {
                 const totalDuration = audio.duration || 30;
@@ -319,7 +296,6 @@ function setupAudioEndedHandler(audio) {
             console.warn("⚠️ Listen% tracking error:", err);
         }
         listenStartTime = null;
-        // 3. replay behavior
         if (audio.currentTime !== 0) audio.currentTime = 0;
         if (!audio.paused) {
             audio.play();
@@ -330,7 +306,6 @@ function setupAudioEndedHandler(audio) {
         }
     });
 }
-
 function setupAudioPlayerListeners() {
     if (playBtn && !playBtn._listenerAttached) {
         playBtn.addEventListener("click", () => {
@@ -343,7 +318,6 @@ function setupAudioPlayerListeners() {
         });
         playBtn._listenerAttached = true;
     }
-
     if (pauseBtn && !pauseBtn._listenerAttached) {
         pauseBtn.addEventListener("click", () => {
             if (!mainAudio) return;
@@ -354,7 +328,6 @@ function setupAudioPlayerListeners() {
         });
         pauseBtn._listenerAttached = true;
     }
-
     if (seekbar && !seekbar._listenerAttached) {
         seekbar.addEventListener("input", () => {
             if (!mainAudio) return;
@@ -367,52 +340,29 @@ function setupAudioPlayerListeners() {
         seekbar._listenerAttached = true;
     }
 }
-
 setupAudioPlayerListeners();
 
-// =============================
-// ======= CARD HEIGHT =========
-// =============================
-
-function lockCardsHeightOnceLoaded(mainEl = null, nextEl = null) {
-    const cardsContainer = document.getElementById("cards");
-    if (cardsContainer.dataset.locked === "true") return;
-    mainEl ||= document.getElementById("mainCard");
-    nextEl ||= document.getElementById("nextCard");
-    if (!mainEl || !nextEl) return;
-    // code was commented, left here
-}
-
-// =============================
-// ======== LISTEN LOGGING =====
-// =============================
-
+// ==============================
+// ==== LISTEN/SONG HANDLING ====
+// ==============================
 function logListen() {
     if (!mainAudio || !window.currentSongObject) return;
     try {
         const elapsed = (Date.now() - (listenStartTime || Date.now())) / 1000;
         const total = mainAudio.duration || 30;
         const percent = Math.min((elapsed / total) * 100, 100);
-
         updateTasteProfile(window.currentSongObject, {
             listen: true,
             listenPercent: percent,
         });
-
         if (debug) console.log(`🎧 Logged listen%: ${percent.toFixed(1)}%`);
     } catch (err) {
         console.warn("⚠️ listen% tracking failed:", err);
     }
     listenStartTime = null;
 }
-
-// =============================
-// =======  SONG SWITCH   ======
-// =============================
-
 async function handleSongSwitch(onSongAction) {
     if (typeof onSongAction === "function") onSongAction(currentSongJson);
-
     document.querySelectorAll(".iconPopup").forEach(popup => {
         popup.style.opacity = "0";
         popup.addEventListener("transitionend", function handler() {
@@ -420,11 +370,9 @@ async function handleSongSwitch(onSongAction) {
             popup.remove();
         });
     });
-
     const cardsContainer = document.getElementById("cards");
     const mainCard = document.getElementById("mainCard");
     const nextCard = document.getElementById("nextCard");
-
     if (mainCard) {
         mainCard.remove();
         if (debug) console.log("Main card removed");
@@ -435,7 +383,6 @@ async function handleSongSwitch(onSongAction) {
     currentSong = nextSong;
     await fetchAndDisplaySong(currentSong, "mainCard");
     if (debug) console.log("Song fetched and displayed");
-
     const newMainCard = document.getElementById("mainCard");
     if (newMainCard) {
         newMainCard.insertAdjacentHTML("beforebegin", nextCardHTML);
@@ -443,16 +390,12 @@ async function handleSongSwitch(onSongAction) {
         cardsContainer.insertAdjacentHTML("beforeend", nextCardHTML);
     }
     if (typeof window.applySquircles === "function") window.applySquircles();
-
     nextSong = requestSong();
     fetchAndDisplaySong(nextSong, "nextCard");
-
     refreshAudioPlayerElements();
     setupAudioPlayerListeners();
     attachIOSRangeHandlers();
-
     document.getElementById("nextCard").style.opacity = "";
-
     if (mainCardPlaying && mainAudio) {
         mainAudio.currentTime = 0;
         mainAudio.play();
@@ -462,23 +405,18 @@ async function handleSongSwitch(onSongAction) {
         }
     }
 }
-
 window.handleSongSwitch = handleSongSwitch;
 
-// =============================
-// ========== SWIPES ===========
-// =============================
-
+// ====================================
+// ========== SWIPE HANDLERS ==========
+// ====================================
 function showSwipePopup(type) {
     const existing = document.querySelector(".iconPopup");
     if (existing) existing.remove();
-
     const popupHTML = type === "like" ? likeIcon : dislikeIcon;
     document.body.insertAdjacentHTML("beforeend", popupHTML);
-
     const popup = document.querySelector(`.${type}Popup`);
     if (!popup) return;
-
     popup.style.opacity = "1";
     popup.style.transition = "opacity 0.4s ease";
     setTimeout(() => {
@@ -486,7 +424,6 @@ function showSwipePopup(type) {
         popup.addEventListener("transitionend", () => popup.remove());
     }, 500);
 }
-
 async function animateSwipe(direction, callback) {
     const mainCard = document.getElementById("mainCard");
     if (!mainCard) {
@@ -498,7 +435,6 @@ async function animateSwipe(direction, callback) {
     const maxAngle = 12;
     const angle = direction === "right" ? maxAngle : -maxAngle;
     mainCard.style.transform = `translateX(${off}px) rotate(${angle}deg)`;
-
     function cleanupAndCallback() {
         mainCard.removeEventListener('transitionend', cleanupAndCallback);
         if (typeof callback === "function") callback();
@@ -531,7 +467,6 @@ document.getElementById("dislike-btn").addEventListener("click", () => {
         });
     });
 });
-
 document.getElementById("like-btn").addEventListener("click", () => {
     if (!window.currentSongObject) {
         console.warn("⚠️ No current song object yet!");
@@ -557,48 +492,37 @@ document.getElementById("like-btn").addEventListener("click", () => {
     });
 });
 
-// =============================
-// ===== MAIN CARD DRAGGING ====
-// =============================
-
+// ==================================
+// ====== CARD DRAGGING LOGIC =======
+// ==================================
 (function setupMainCardDrag() {
     // Drag-related state
     let mainCard = document.getElementById("mainCard");
     let startX = 0, lastX = 0, dragging = false;
     let cardWidth = mainCard ? mainCard.getBoundingClientRect().width : 0;
-
     const thresholdFraction = 0.33;
     const minThresholdPx = 120;
 
-    function setCardTransition(card, on) {
-        card.style.transition = on ? 'transform 0.25s ease-in-out' : 'none';
-    }
-
+    function setCardTransition(card, on) { card.style.transition = on ? 'transform 0.25s ease-in-out' : 'none'; }
     function setCardX(card, x) {
         const maxAngle = 12;
         const percentSwiped = Math.abs(x) / window.innerWidth * 4;
         let iconLocation = document.getElementById("body");
         let iconPopup = iconLocation.querySelector(".iconPopup");
-
         if (x === 0 && iconPopup) iconPopup.remove();
-
         if (x !== 0) {
             if (iconPopup) iconPopup.remove();
             if (x > 0) {
                 iconLocation.insertAdjacentHTML("beforeend", likeIcon);
-                let likeIconElement = document.getElementById("mainCard").querySelector(".dislikePopup");
                 iconLocation.querySelector(".likePopup").style.opacity = percentSwiped;
-            }
-            else {
+            } else {
                 iconLocation.insertAdjacentHTML("beforeend", dislikeIcon);
-                let dislikeIconElement = document.getElementById("mainCard").querySelector(".likePopup");
                 iconLocation.querySelector(".dislikePopup").style.opacity = percentSwiped;
             }
         }
         const angle = Math.max(-maxAngle, Math.min(maxAngle, (x / window.innerWidth) * maxAngle));
         card.style.transform = `translateX(${x}px) rotate(${angle}deg)`;
     }
-
     function handleRelease() {
         if (!mainCard) return;
         const threshold = Math.max(cardWidth * thresholdFraction, minThresholdPx);
@@ -618,7 +542,6 @@ document.getElementById("like-btn").addEventListener("click", () => {
             setCardX(mainCard, 0);
         }
     }
-
     function onTouchStart(e) {
         if (!mainCard) return;
         if (e.touches.length > 1) return;
@@ -646,7 +569,7 @@ document.getElementById("like-btn").addEventListener("click", () => {
         setCardX(mainCard, dx);
         e.preventDefault();
     }
-    function onTouchEnd(e) { if (!dragging) return; dragging = false; handleRelease(); }
+    function onTouchEnd() { if (!dragging) return; dragging = false; handleRelease(); }
     function cleanListeners(card) {
         card.removeEventListener('touchstart', onTouchStart);
         card.removeEventListener('touchmove', onTouchMove);
@@ -671,10 +594,9 @@ document.getElementById("like-btn").addEventListener("click", () => {
     observeTarget();
 })();
 
-// =============================
-// ====== MENU TOGGLING ========
-// =============================
-
+// ==================================
+// ========= MENU TOGGLING ==========
+// ==================================
 menuToggleElements.forEach(el => {
     el.addEventListener("click", () => {
         const cardView = document.getElementById("cardView");
@@ -691,13 +613,12 @@ menuToggleElements.forEach(el => {
     });
 });
 
-// =============================
-// == SONG MENU & PLAYLIST =====
-// =============================
+// ==================================
+// ========== PLAYLIST UI ===========
+// ==================================
 function renderPlaylistSelection(playlists) {
     const playlistSelectionDiv = document.getElementById("playlistSelection");
     playlistSelectionDiv.innerHTML = "";
-
     let sortedPlaylists, effectiveLength;
     if (playlistDropdownExpanded) {
         sortedPlaylists = [
@@ -709,36 +630,27 @@ function renderPlaylistSelection(playlists) {
         sortedPlaylists = [playlists[selectedPlaylistIndex]];
         effectiveLength = 1;
     }
-
     for (let idxSorted = 0; idxSorted < effectiveLength; ++idxSorted) {
         const playlistObj = sortedPlaylists[idxSorted];
-        const idx = playlistDropdownExpanded
-            ? idxSorted
-            : selectedPlaylistIndex;
-        if (!playlistObj) continue; // defensive
-
+        const idx = playlistDropdownExpanded ? idxSorted : selectedPlaylistIndex;
+        if (!playlistObj) continue;
         const itemDiv = document.createElement("div");
         itemDiv.classList.add("playlistSelectionItem");
         if (!playlistDropdownExpanded && idx !== selectedPlaylistIndex)
             itemDiv.classList.add("unselected");
-
         const emojiP = document.createElement("p");
         emojiP.classList.add("playlistEmoji");
         emojiP.textContent = playlistObj.emoji || "🎵";
-
         const nameP = document.createElement("p");
         nameP.classList.add("playlistName");
         nameP.textContent = playlistObj.name;
-
         itemDiv.appendChild(emojiP);
         itemDiv.appendChild(nameP);
-
         itemDiv.addEventListener("click", () => {
             if (selectedPlaylistIndex !== idx) {
                 selectedPlaylistIndex = idx;
                 playlistDropdownExpanded = false;
                 renderPlaylistSelection(playlists);
-
                 const playlistSelection = document.getElementById("playlistSelection");
                 playlistSelection.style.height = "";
                 playlistSelection.style.removeProperty("height");
@@ -753,7 +665,6 @@ function renderPlaylistSelection(playlists) {
         playlistSelectionDiv.appendChild(itemDiv);
     }
 }
-
 cardViewMenuButton.addEventListener("click", () => {
     const playlistSelectionDiv = document.getElementById("playlistSelection");
     if (!playlistSelectionDiv) return;
@@ -762,190 +673,12 @@ cardViewMenuButton.addEventListener("click", () => {
     renderPlaylistSelection(playlists);
     renderSongList(playlists, selectedPlaylistIndex);
 });
-
-async function renderSongList(playlists, playlistIdx = selectedPlaylistIndex) {
-    const listItemsDiv = document.getElementById("listItems");
-    if (!listItemsDiv) return;
-    listItemsDiv.innerHTML = "";
-
-    let playlistArr;
-    const playlistName = playlists[playlistIdx]?.name || "All";
-    playlistArr = requestSongList(playlistName);
-
-    const playlistObj = Array.isArray(playlistArr) && playlistArr.length > 0 ? playlistArr[0] : null;
-    if (!playlistObj || !Array.isArray(playlistObj.songList)) {
-        return;
-    }
-    const songList = playlistObj.songList;
-
-    
-    // click share
-    document.addEventListener("click", async (e) => {
-    const share = e.target.closest(".share");
-
-    if (share) {
-        const link = share.dataset.link;
-
-        if (!link) return console.error("❌ No link found!");
-
-        try {
-            await navigator.clipboard.writeText(link);
-            showCopyToast("Link copied!");
-        } catch (err) {
-            console.error("Failed to copy:", err);
-        }
-    }
-});
-
-function showCopyToast(message = "Link copied") {
-    const toast = document.createElement("div");
-    toast.className = "copyToast";
-    toast.textContent = message;
-    document.body.appendChild(toast);
-
-    requestAnimationFrame(() => {
-        toast.classList.add("show");
-    });
-
-    setTimeout(() => {
-        toast.classList.remove("show");
-        toast.addEventListener("transitionend", () => toast.remove());
-    }, 1600);
-}
-
-
-
-    const renderSongMenuItem = async (song) => {
-        const query = song.title || song.name || "";
-        if (window.debug) console.log(song);
-        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}`;
-        let songData = null;
-
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            const results = (data.results || []).filter((item) => item.kind === "song");
-            if (!results.length) songData = null;
-            else songData = results[0];
-        } catch (e) { songData = null; }
-
-        // If no iTunes API result, skip this song
-        if (!songData) {
-            return null;
-        }
-
-        const menuItem = document.createElement("div");
-        menuItem.className = "menuItem";
-
-        // part1: image & info
-        const part1 = document.createElement("div");
-        part1.className = "part1";
-        const img = document.createElement("img");
-        img.className = "menuItemImage";
-        img.src = songData.artworkUrl100 ? songData.artworkUrl100.replace("100x100", "1500x1500") : (song.image || "");
-        img.alt = songData.trackName && songData.artistName
-            ? `${songData.trackName} by ${songData.artistName}`
-            : (query ? query : "Unknown");
-
-        const songInfo = document.createElement("p");
-        songInfo.className = "songInfo";
-        songInfo.innerHTML = `
-            Genre: ${songData?.primaryGenreName || song.genre || "Unknown"}<br />
-            Rank: ${song.rank != null ? song.rank : "-"}<br />
-            Release: ${songData?.releaseDate
-                ? (typeof formatDate === "function" ? formatDate(songData.releaseDate) : songData.releaseDate.slice(0, 10))
-                : (song.release || "")
-            }
-        `;
-        part1.appendChild(img);
-        part1.appendChild(songInfo);
-
-        // part2: title & artist
-        const part2 = document.createElement("div");
-        part2.className = "part2";
-        const title = document.createElement("p");
-        title.className = "title";
-        title.textContent = songData?.trackName || song.title || "Untitled";
-        const artist = document.createElement("p");
-        artist.className = "artist";
-        artist.textContent = songData?.artistName || song.artist || "";
-        part2.appendChild(title); part2.appendChild(artist);
-
-        // part3: icons
-        const part3 = document.createElement("div");
-        part3.className = "part3";
-
-        // star
-        const starDiv = document.createElement("div");
-        starDiv.className = "star";
-        if (song.favorited) starDiv.classList.add("starred");
-        if (song.favorited) {
-            starDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 3l18 18" /><path d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917" /></svg>`;
-        }
-        else {
-            starDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"/></svg>`;
-        }
-        part3.appendChild(starDiv);
-
-        // share
-        const shareDiv = document.createElement("div");
-        shareDiv.className = "share";
-
-        // Attach metadata to share:
-        shareDiv.dataset.songName = song.name || song.title;
-        shareDiv.dataset.rank = song.rank;
-        shareDiv.dataset.playlist = playlistObj.name; // optional but helpful
-
-        // Add link:
-        shareDiv.dataset.link = songData.trackViewUrl;
-
-        shareDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1" /><path d="M12 14v-11" /><path d="M9 6l3 -3l3 3" /></svg>`;
-        part3.appendChild(shareDiv);
-
-
-
-
-
-        // qr
-        const qrCodeDiv = document.createElement("div");
-        qrCodeDiv.className = "qrCode";
-        qrCodeDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 17l0 .01" /><path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 7l0 .01" /><path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M17 7l0 .01" /><path d="M14 14l3 0" /><path d="M20 14l0 .01" /><path d="M14 14l0 3" /><path d="M14 20l3 0" /><path d="M17 17l3 0" /><path d="M20 17l0 3" /></svg>`;
-        part3.appendChild(qrCodeDiv);
-
-        menuItem.appendChild(part1); menuItem.appendChild(part2); menuItem.appendChild(part3);
-        return menuItem;
-    };
-
-    for (let i = 0; i < songList.length; ++i) {
-        const menuItem = await renderSongMenuItem(songList[i]);
-        if (menuItem) {
-            if (i > 0) {
-                const hr = document.createElement("hr");
-                listItemsDiv.appendChild(hr);
-            }
-            listItemsDiv.appendChild(menuItem);
-        }
-    }
-}
-
-(function setupClearButtonHandler() {
-    const clearButton = document.getElementById("clearSearchButton");
-    const searchInput = document.getElementById("menuTextInput");
-    if (!clearButton || !searchInput) return;
-    clearButton.addEventListener("click", function () {
-        searchInput.value = "";
-        const event = new Event('input', { bubbles: true });
-        searchInput.dispatchEvent(event);
-    });
-})();
-
 (function () {
     document.getElementById("playlistSelectionDropdown")?.addEventListener("click", function () {
         const playlistSelection = document.getElementById("playlistSelection");
         if (!playlistSelection) return;
         const playlists = requestPlaylistList();
         playlistDropdownExpanded = !playlistDropdownExpanded;
-
         if (playlistDropdownExpanded) {
             playlistSelection.style.height = "auto";
             const dropdown = document.getElementById("playlistSelectionDropdown");
@@ -965,11 +698,131 @@ function showCopyToast(message = "Link copied") {
         renderPlaylistSelection(playlists);
     });
 })();
+(function setupClearButtonHandler() {
+    const clearButton = document.getElementById("clearSearchButton");
+    const searchInput = document.getElementById("menuTextInput");
+    if (!clearButton || !searchInput) return;
+    clearButton.addEventListener("click", function () {
+        searchInput.value = "";
+        const event = new Event('input', { bubbles: true });
+        searchInput.dispatchEvent(event);
+    });
+})();
 
-// =============================
-// ======== TITLE MARQUEE ======
-// =============================
+async function renderSongList(playlists, playlistIdx = selectedPlaylistIndex) {
+    const listItemsDiv = document.getElementById("listItems");
+    if (!listItemsDiv) return;
+    listItemsDiv.innerHTML = "";
+    let playlistArr;
+    const playlistName = playlists[playlistIdx]?.name || "All";
+    playlistArr = requestSongList(playlistName);
+    const playlistObj = Array.isArray(playlistArr) && playlistArr.length > 0 ? playlistArr[0] : null;
+    if (!playlistObj || !Array.isArray(playlistObj.songList)) return;
+    const songList = playlistObj.songList;
 
+    // Attach "share" click logic (move outside the loop if called multiple times)
+    document.addEventListener("click", async (e) => {
+        const share = e.target.closest(".share");
+        if (share) {
+            const link = share.dataset.link;
+            if (!link) return console.error("❌ No link found!");
+            try {
+                await navigator.clipboard.writeText(link);
+                showCopyToast("Link copied!");
+            } catch (err) {
+                console.error("Failed to copy:", err);
+            }
+        }
+    });
+
+    // Render a single menu item (factored as helper)
+    const renderSongMenuItem = async (song) => {
+        const query = song.title || song.name || "";
+        if (window.debug) console.log(song);
+        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}`;
+        let songData = null;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            const results = (data.results || []).filter((item) => item.kind === "song");
+            if (!results.length) songData = null;
+            else songData = results[0];
+        } catch (e) { songData = null; }
+        if (!songData) return null;
+        const menuItem = document.createElement("div");
+        menuItem.className = "menuItem";
+        // part1: image & info
+        const part1 = document.createElement("div");
+        part1.className = "part1";
+        const img = document.createElement("img");
+        img.className = "menuItemImage";
+        img.src = songData.artworkUrl100 ? songData.artworkUrl100.replace("100x100", "1500x1500") : (song.image || "");
+        img.alt = songData.trackName && songData.artistName
+            ? `${songData.trackName} by ${songData.artistName}`
+            : (query ? query : "Unknown");
+        const songInfo = document.createElement("p");
+        songInfo.className = "songInfo";
+        songInfo.innerHTML = `
+            Genre: ${songData?.primaryGenreName || song.genre || "Unknown"}<br />
+            Rank: ${song.rank != null ? song.rank : "-"}<br />
+            Release: ${songData?.releaseDate
+                ? (typeof formatDate === "function" ? formatDate(songData.releaseDate) : songData.releaseDate.slice(0, 10))
+                : (song.release || "")
+            }
+        `;
+        part1.appendChild(img); part1.appendChild(songInfo);
+        // part2: title & artist
+        const part2 = document.createElement("div");
+        part2.className = "part2";
+        const title = document.createElement("p");
+        title.className = "title";
+        title.textContent = songData?.trackName || song.title || "Untitled";
+        const artist = document.createElement("p");
+        artist.className = "artist";
+        artist.textContent = songData?.artistName || song.artist || "";
+        part2.appendChild(title); part2.appendChild(artist);
+        // part3: icons
+        const part3 = document.createElement("div");
+        part3.className = "part3";
+        // star
+        const starDiv = document.createElement("div");
+        starDiv.className = "star";
+        if (song.favorited) starDiv.classList.add("starred");
+        if (song.favorited) {
+            starDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 3l18 18" /><path d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917" /></svg>`;
+        } else {
+            starDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"/></svg>`;
+        }
+        part3.appendChild(starDiv);
+        // share
+        const shareDiv = document.createElement("div");
+        shareDiv.className = "share";
+        shareDiv.dataset.songName = song.name || song.title;
+        shareDiv.dataset.rank = song.rank;
+        shareDiv.dataset.playlist = playlistObj.name;
+        shareDiv.dataset.link = songData.trackViewUrl;
+        shareDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1" /><path d="M12 14v-11" /><path d="M9 6l3 -3l3 3" /></svg>`;
+        part3.appendChild(shareDiv);
+        // qr
+        const qrCodeDiv = document.createElement("div");
+        qrCodeDiv.className = "qrCode";
+        qrCodeDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 17l0 .01" /><path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 7l0 .01" /><path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M17 7l0 .01" /><path d="M14 14l3 0" /><path d="M20 14l0 .01" /><path d="M14 14l0 3" /><path d="M14 20l3 0" /><path d="M17 17l3 0" /><path d="M20 17l0 3" /></svg>`;
+        part3.appendChild(qrCodeDiv);
+        menuItem.appendChild(part1); menuItem.appendChild(part2); menuItem.appendChild(part3);
+        return menuItem;
+    };
+    for (let i = 0; i < songList.length; ++i) {
+        const menuItem = await renderSongMenuItem(songList[i]);
+        if (menuItem) {
+            if (i > 0) listItemsDiv.appendChild(document.createElement("hr"));
+            listItemsDiv.appendChild(menuItem);
+        }
+    }
+}
+
+// ==================================
+// ========= TITLE MARQUEE ==========
+// ==================================
 function applyTitleMarqueeIfNeeded(el) {
     requestAnimationFrame(() => {
         if (el.scrollWidth <= el.clientWidth + 2) return;
@@ -987,11 +840,9 @@ function applyTitleMarqueeIfNeeded(el) {
         wrapper.appendChild(inner);
         el.textContent = "";
         el.appendChild(wrapper);
-
         const baseSpeed = 9;
         const factor = Math.min(Math.max(text.length / 20, 0.7), 2.5);
         inner.style.animationDuration = `${baseSpeed * factor}s`;
-
         const computeDistance = () => {
             const styles = getComputedStyle(inner);
             const gap = parseFloat(styles.gap || styles.columnGap || "0") || 0;
@@ -1012,34 +863,27 @@ function applyTitleMarqueeIfNeeded(el) {
     });
 }
 
-// =============================
-// ===== iOS RANGE FIX HANDLER =
-// =============================
-
+// ====================================
+// ======= iOS RANGE HANDLING =========
+// ====================================
 function iosRangeTouchHandler(e) {
     if (e.touches.length > 1) return;
     const input = e.target;
     const rect = input.getBoundingClientRect();
     const touch = e.touches[0] || e.changedTouches[0];
-
     let percent = (touch.pageX - rect.left - window.scrollX) / rect.width;
     percent = Math.min(Math.max(percent, 0), 1);
-
     const min = parseFloat(input.min || 0);
     const max = parseFloat(input.max || 100);
     const step = parseFloat(input.step || 1);
-
     let value = min + percent * (max - min);
     value = Math.round((value - min) / step) * step + min;
     value = Math.min(Math.max(value, min), max);
-
     input.value = value;
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
-
     e.preventDefault();
 }
-
 function attachIOSRangeHandlers() {
     if (/iPhone|iPad|iPod/.test(navigator.platform)) {
         document.querySelectorAll('input[type="range"]').forEach((slider) => {
@@ -1053,10 +897,9 @@ function attachIOSRangeHandlers() {
 }
 attachIOSRangeHandlers();
 
-// =============================
-// ========= INIT SONGS ========
-// =============================
-
+// ====================================
+// ========== INIT SONGS ==============
+// ====================================
 (async function initSongs() {
     currentSong = requestSong();
     nextSong = requestSong();
@@ -1065,10 +908,21 @@ attachIOSRangeHandlers();
     lockCardsHeightOnceLoaded();
 })();
 
-// =============================
-// =======  BORDER RADIUS ======
-// =============================
+// ====================================
+// ========== CARD HEIGHT =============
+// ====================================
+function lockCardsHeightOnceLoaded(mainEl = null, nextEl = null) {
+    const cardsContainer = document.getElementById("cards");
+    if (cardsContainer.dataset.locked === "true") return;
+    mainEl ||= document.getElementById("mainCard");
+    nextEl ||= document.getElementById("nextCard");
+    if (!mainEl || !nextEl) return;
+    // code was commented, left here
+}
 
+// ==================================
+// ======= BORDER RADIUS ============
+// ==================================
 const rerunApplySquircles = () => {
     if (typeof window.applySquircles === "function") {
         window.applySquircles();

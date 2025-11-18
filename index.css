@@ -634,10 +634,10 @@ input[type="range"]::-ms-thumb {
   transform: translate(-50%, -40%); /* start slightly lower */
 
   background-color: rgba(255, 255, 255, 0.33);
-  padding: calc(20 / var(--simWidth) * 100vw) calc(40 / var(--simWidth) * 100vw);
+  padding: calc(16 / var(--simWidth) * 100vw) calc(32 / var(--simWidth) * 100vw);
   border-radius: calc(64 / var(--simWidth) * 100vw);
 
-  font-size: calc(28 / var(--simWidth) * 100vw);
+  font-size: calc(24 / var(--simWidth) * 100vw);
   color: black;
   font-weight: 500;
 
@@ -647,7 +647,7 @@ input[type="range"]::-ms-thumb {
   opacity: 0;
   transition: opacity 0.35s ease, transform 0.35s ease;
 
-  white-space: nowrap;     /* 🔥 prevents wrapping */
+  white-space: nowrap; /* 🔥 prevents wrapping */
   z-index: 9999;
   pointer-events: none;
 }
@@ -656,5 +656,3 @@ input[type="range"]::-ms-thumb {
   opacity: 1;
   transform: translate(-50%, -50%); /* slide up into center */
 }
-
-
