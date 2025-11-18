@@ -380,7 +380,7 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   justify-content: center;
   align-content: center;
-  transition: all 0.05s ease-in-out;
+  transition: all 0.1s ease-in-out;
 }
 
 .dislikePopup {
@@ -570,8 +570,12 @@ input[type="range"]::-ms-thumb {
   background-color: rgba(255, 255, 255, 0.25);
 }
 
+.star {
+  transition: background-color 0.25s ease-in-out;
+}
+
 .star.starred {
-  background-color: #0091ff;
+  background-color: #0080ff;
 }
 
 .part3 > div > svg {
@@ -645,7 +649,7 @@ input[type="range"]::-ms-thumb {
   -webkit-backdrop-filter: blur(0.5rem);
 
   opacity: 0;
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
 
   white-space: nowrap; /* 🔥 prevents wrapping */
   z-index: 9999;
