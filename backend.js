@@ -173,7 +173,23 @@ let playlistList = [
   },
   {
     "name": "Favorites", "emoji": "⭐", "songList": [
-      { "name": "Can't Hold Us - Macklemore", "rank": 1, "favorited": true }
+      { "name": "Can't Hold Us - Macklemore", "rank": 1, "favorited": true },
+      { "name": "Assumptions - Sam Gellaitry", "rank": 2, "favorited": true },
+      { "name": "Levitating - Dua Lipa", "rank": 3, "favorited": true },
+      { "name": "Loyal - ODESZA", "rank": 4, "favorited": true },
+      { "name": "Cake By The Ocean - DNCE", "rank": 5, "favorited": true },
+      { "name": "Title Theme - Koji Kondo (The Legend of Zelda: Ocarina of Time)", "rank": 6, "favorited": true },
+      { "name": "Still Alive - GLaDOS (Portal)", "rank": 7, "favorited": true },
+      { "name": "Megalovania - Toby Fox (Undertale)", "rank": 8, "favorited": true },
+      { "name": "Main Theme - Koji Kondo (Super Mario Bros.)", "rank": 9, "favorited": true },
+      { "name": "Symphony No. 5 in C minor - Ludwig van Beethoven", "rank": 10, "favorited": true },
+      { "name": "Swan Lake Suite - Pyotr Ilyich Tchaikovsky", "rank": 11, "favorited": true },
+      { "name": "Eine kleine Nachtmusik - Wolfgang Amadeus Mozart", "rank": 12, "favorited": true },
+      { "name": "Moonlight Sonata - Ludwig van Beethoven", "rank": 13, "favorited": true },
+      { "name": "So What - Miles Davis", "rank": 14, "favorited": true },
+      { "name": "Freddie Freeloader - Miles Davis", "rank": 15, "favorited": true },
+      { "name": "Round Midnight - Thelonious Monk", "rank": 16, "favorited": true },
+      { "name": "What a Wonderful World - Louis Armstrong", "rank": 17, "favorited": true },
     ]
   },
   {

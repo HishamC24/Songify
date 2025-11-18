@@ -708,6 +708,25 @@ cardViewMenuButton.addEventListener("click", () => {
         searchInput.dispatchEvent(event);
     });
 })();
+// Fix: Ensure selectedPlaylistIndex is updated when choosing an item in the playlist dropdown
+function renderPlaylistSelection(playlists) {
+    const playlistSelectionDiv = document.getElementById("playlistSelection");
+    if (!playlistSelectionDiv) return;
+    playlistSelectionDiv.innerHTML = "";
+    playlists.forEach((playlist, idx) => {
+        const itemDiv = document.createElement("div");
+        itemDiv.className = "playlistMenuItem" + (idx === selectedPlaylistIndex ? " selected" : "");
+        itemDiv.textContent = `${playlist.emoji ? playlist.emoji + " " : ""}${playlist.name}`;
+        itemDiv.addEventListener("click", function () {
+            // Update selectedPlaylistIndex here so selection persists and works on subsequent opens
+            selectedPlaylistIndex = idx;
+            playlistDropdownExpanded = false;
+            renderPlaylistSelection(playlists);
+            renderSongList(playlists, selectedPlaylistIndex);
+        });
+        playlistSelectionDiv.appendChild(itemDiv);
+    });
+}
 
 async function renderSongList(playlists, playlistIdx = selectedPlaylistIndex) {
     const listItemsDiv = document.getElementById("listItems");
@@ -811,11 +830,16 @@ async function renderSongList(playlists, playlistIdx = selectedPlaylistIndex) {
         menuItem.appendChild(part1); menuItem.appendChild(part2); menuItem.appendChild(part3);
         return menuItem;
     };
+
+    let firstMenuItemAdded = false;
     for (let i = 0; i < songList.length; ++i) {
         const menuItem = await renderSongMenuItem(songList[i]);
         if (menuItem) {
-            if (i > 0) listItemsDiv.appendChild(document.createElement("hr"));
+            if (firstMenuItemAdded) {
+                listItemsDiv.appendChild(document.createElement("hr"));
+            }
             listItemsDiv.appendChild(menuItem);
+            firstMenuItemAdded = true;
         }
     }
 }
