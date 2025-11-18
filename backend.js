@@ -157,17 +157,17 @@ let playlistList = [
       { "name": "Loyal - ODESZA", "rank": 5, "favorited": true },
       { "name": "How Long - Charlie Puth", "rank": 6, "favorited": false },
       { "name": "Not Like Us - Kendrick Lamar", "rank": 7, "favorited": false },
-      { "name": "Adventure of a Lifetime - Coldplay", "rank": 8, "favorited": false },
+      { "name": "Adventure of a Lifetime - Coldplay", "rank": 8, "favorited": false }, // fail
       { "name": "Treasure - Bruno Mars", "rank": 9, "favorited": false },
-      { "name": "September - Earth, Wind & Fire", "rank": 10, "favorited": false },
+      { "name": "September - Earth, Wind & Fire", "rank": 10, "favorited": false }, // fail
       { "name": "Higher Love - Kygo & Whitney Houston", "rank": 11, "favorited": false },
-      { "name": "Walking on a Dream - Empire of the Sun", "rank": 12, "favorited": false },
+      { "name": "Walking on a Dream - Empire of the Sun", "rank": 12, "favorited": false }, // fail
       { "name": "Classic - MKTO", "rank": 13, "favorited": false },
-      { "name": "Good Day for Living - Rascal Flatts", "rank": 14, "favorited": false },
+      { "name": "Good Day for Living - Rascal Flatts", "rank": 14, "favorited": false }, // fail
       { "name": "Cake By The Ocean - DNCE", "rank": 15, "favorited": true },
       { "name": "Come and Get Your Love - Redbone", "rank": 16, "favorited": false },
-      { "name": "Take On Me - a-ha", "rank": 17, "favorited": false },
-      { "name": "Can't Stop The Feeling! - Justin Timberlake", "rank": 18, "favorited": false },
+      { "name": "Take On Me - a-ha", "rank": 17, "favorited": false },  // fail
+      { "name": "Can't Stop The Feeling! - Justin Timberlake", "rank": 18, "favorited": false },  // fail
       { "name": "Shut Up and Dance - WALK THE MOON", "rank": 19, "favorited": false }
     ]
   },

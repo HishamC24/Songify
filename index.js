@@ -176,6 +176,7 @@ async function fetchAndDisplaySong(songName, divID) {
     try {
         const response = await fetch(url);
         const data = await response.json();
+        
         if (debug) console.log(data, songName);
         const results = (data.results || []).filter((item) => item.kind === "song");
         if (!results.length) return handleNoSong(divID);
@@ -777,6 +778,43 @@ async function renderSongList(playlists, playlistIdx = selectedPlaylistIndex) {
     }
     const songList = playlistObj.songList;
 
+    
+    // click share
+    document.addEventListener("click", async (e) => {
+    const share = e.target.closest(".share");
+
+    if (share) {
+        const link = share.dataset.link;
+
+        if (!link) return console.error("❌ No link found!");
+
+        try {
+            await navigator.clipboard.writeText(link);
+            showCopyToast("Link copied!");
+        } catch (err) {
+            console.error("Failed to copy:", err);
+        }
+    }
+});
+
+function showCopyToast(message = "Link copied") {
+    const toast = document.createElement("div");
+    toast.className = "copyToast";
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.classList.add("show");
+    });
+
+    setTimeout(() => {
+        toast.classList.remove("show");
+        toast.addEventListener("transitionend", () => toast.remove());
+    }, 1600);
+}
+
+
+
     const renderSongMenuItem = async (song) => {
         const query = song.title || song.name || "";
         if (window.debug) console.log(song);
@@ -852,8 +890,21 @@ async function renderSongList(playlists, playlistIdx = selectedPlaylistIndex) {
         // share
         const shareDiv = document.createElement("div");
         shareDiv.className = "share";
+
+        // Attach metadata to share:
+        shareDiv.dataset.songName = song.name || song.title;
+        shareDiv.dataset.rank = song.rank;
+        shareDiv.dataset.playlist = playlistObj.name; // optional but helpful
+
+        // Add link:
+        shareDiv.dataset.link = songData.trackViewUrl;
+
         shareDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1" /><path d="M12 14v-11" /><path d="M9 6l3 -3l3 3" /></svg>`;
         part3.appendChild(shareDiv);
+
+
+
+
 
         // qr
         const qrCodeDiv = document.createElement("div");
