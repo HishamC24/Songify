@@ -5,9 +5,9 @@ import { updateTasteProfile } from "./backend/songify_logic.js";
 import { songs, requestSong, dislikeSong, likeSong, requestSongList, requestPlaylistList } from "./backend.js";
 import { debug } from "./globalSettings.js";
 
-// ========================
-// ===== CONSTANTS  =======
-// ========================
+// ==============================
+// ======= CONSTANTS ============
+// ==============================
 const installBtn = document.getElementById("install-btn");
 const cardViewMenuButton = document.getElementById('cardViewMenuButton');
 const menuToggleElements = document.querySelectorAll('.menuToggle');
@@ -110,7 +110,7 @@ let playlistDropdownExpanded = false;
 let deferredPrompt = null;
 
 // ==============================
-// ==== UTILITY FUNCTIONS  ======
+// ===== UTILITY FUNCTIONS ======
 // ==============================
 const formatDate = (dateStr) => {
     if (!dateStr) return "";
@@ -128,9 +128,10 @@ function formatTime(seconds) {
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-// FIX (edit): Prevent duplicate copyToast
+// ==============================
+// ===== COPY TOAST FIX =========
+// ==============================
 function showCopyToast(message = "Link copied") {
-    // Remove any existing copyToast
     document.querySelectorAll(".copyToast").forEach(el => el.remove());
     const toast = document.createElement("div");
     toast.className = "copyToast";
@@ -176,9 +177,9 @@ function checkInstallState() {
     });
 })();
 
-// =====================================
-// ==== SONG FETCHING / LOADING ========
-// =====================================
+// ==============================
+// ==== SONG FETCHING / LOADING =
+// ==============================
 async function fetchAndDisplaySong(songName, divID) {
     if (divID === "mainCard") cardIsLoading = true;
     const url = `https://itunes.apple.com/search?term=${encodeURIComponent(songName)}`;
@@ -197,7 +198,6 @@ async function fetchAndDisplaySong(songName, divID) {
             return;
         }
         if (divID === "mainCard") window.currentSongObject = song;
-        // Elements
         const img = card.querySelector("img");
         const titleElem = card.querySelector(".title");
         const artistElem = card.querySelector(".artist");
@@ -241,7 +241,7 @@ function handleNoSong(divID) {
 }
 
 // ==============================
-// ==== AUDIO PLAYER ============
+// ===== AUDIO PLAYER ===========
 // ==============================
 let playBtn = document.querySelector("#mainCard .play");
 let pauseBtn = document.querySelector("#mainCard .pause");
@@ -269,7 +269,6 @@ function setupMainAudio(previewUrl) {
     }
     mainAudio = new Audio(mainPreviewUrl);
 
-    // === VOLUME: load from slider if present, otherwise default to 0.5
     const localVolumeSlider = document.querySelector("#mainCard .volume");
     if (localVolumeSlider) {
         let initialValue = Number(localVolumeSlider.value);
@@ -293,7 +292,6 @@ function resetAudio() {
     }
     if (currentTimeLabel) currentTimeLabel.textContent = "00:00";
     if (durationLabel) durationLabel.textContent = "00:30";
-    // volume UI & mainAudio volume sync (for new songs)
     if (volumeSlider && typeof mainAudio?.volume === "number") {
         volumeSlider.value = Math.round((mainAudio.volume ?? 0.5) * 100);
     }
@@ -369,29 +367,24 @@ function setupAudioPlayerListeners() {
         });
         seekbar._listenerAttached = true;
     }
-
-    // ====== VOLUME SLIDER SUPPORT ======
     if (volumeSlider && !volumeSlider._listenerAttached) {
         volumeSlider.addEventListener("input", () => {
             if (!mainAudio) return;
             const volumeValue = Math.max(0, Math.min(1, volumeSlider.value / 100));
             mainAudio.volume = volumeValue;
         });
-
-        // To support keyboard + min/max for slider, also update on change
         volumeSlider.addEventListener("change", () => {
             if (!mainAudio) return;
             const volumeValue = Math.max(0, Math.min(1, volumeSlider.value / 100));
             mainAudio.volume = volumeValue;
         });
-
         volumeSlider._listenerAttached = true;
     }
 }
 setupAudioPlayerListeners();
 
 // ==============================
-// ==== LISTEN/SONG HANDLING ====
+// ===== LISTEN/SONG HANDLING ===
 // ==============================
 function logListen() {
     if (!mainAudio || !window.currentSongObject) return;
@@ -455,9 +448,9 @@ async function handleSongSwitch(onSongAction) {
 }
 window.handleSongSwitch = handleSongSwitch;
 
-// ====================================
-// ========== SWIPE HANDLERS ==========
-// ====================================
+// ==============================
+// ========= SWIPE HANDLERS =====
+// ==============================
 function showSwipePopup(type, percent = 1) {
     const existing = document.querySelector(".iconPopup");
     if (existing) existing.remove();
@@ -550,11 +543,10 @@ document.getElementById("like-btn").addEventListener("click", () => {
     });
 });
 
-// ==================================
-// ====== CARD DRAGGING LOGIC =======
-// ==================================
+// ==============================
+// ====== CARD DRAGGING LOGIC ====
+// ==============================
 (function setupMainCardDrag() {
-    // Drag-related state
     let mainCard = document.getElementById("mainCard");
     let startX = 0, startY = 0, lastX = 0, lastY = 0, dragging = false, draggingDirection = null;
     let cardWidth = mainCard ? mainCard.getBoundingClientRect().width : 0;
@@ -582,7 +574,6 @@ document.getElementById("like-btn").addEventListener("click", () => {
         popup.style.opacity = opacity;
         popup.style.transition = `opacity 0.08s`;
         popup.style.pointerEvents = "none";
-
         popup.style.removeProperty("position");
         popup.style.removeProperty("top");
         popup.style.removeProperty("left");
@@ -592,16 +583,13 @@ document.getElementById("like-btn").addEventListener("click", () => {
         popup.style.removeProperty("borderRadius");
         popup.style.removeProperty("display");
         popup.style.removeProperty("boxShadow");
-
         return popup;
     }
 
     function setCardX(card, x) {
-        // For left/right swipes
         const maxAngle = 12;
         const percentSwiped = Math.abs(x) / window.innerWidth * 4;
         const iconLocation = document.getElementById("body") || document.body;
-        // Remove any not .starPopup
         iconLocation.querySelectorAll(".likePopup, .dislikePopup").forEach(el => el.remove());
         if (x === 0) return card.style.transform = ``;
         if (x > 0) {
@@ -613,36 +601,24 @@ document.getElementById("like-btn").addEventListener("click", () => {
         card.style.transform = `translateX(${x}px) rotate(${angle}deg)`;
     }
     function setCardY(card, y) {
-        // Up swipe (drag up)
         const iconLocation = document.getElementById("body") || document.body;
-        // Remove any non-.starPopup iconPopups
         iconLocation.querySelectorAll(".likePopup, .dislikePopup").forEach(el => el.remove());
         iconLocation.querySelectorAll(".starPopup").forEach(el => el.remove());
-
         if (y === 0) {
             card.style.transform = "";
             return;
         }
-        // Animate Card
         card.style.transform = `translateY(${y}px)`;
-
-        // Star icon
-        // Now percent swiped is relative to card height, using upSwipeFraction and minUpPx for consistency
-        // percentSwiped = Math.abs(y) / threshold-to-trigger
         let cardHeight = mainCard ? mainCard.offsetHeight || 360 : 360;
         const upThreshold = Math.max(cardHeight * upSwipeFraction, minUpPx);
         const percentSwiped = Math.min(Math.abs(y) / upThreshold, 1.0);
-
         insertPopup('star', percentSwiped);
     }
 
     function handleRelease() {
         if (!mainCard) return;
         setCardTransition(mainCard, true);
-
         const threshold = Math.max(cardWidth * thresholdFraction, minThresholdPx);
-
-        // Handle left/right swipe release
         if (draggingDirection === "horizontal") {
             if (Math.abs(lastX) > threshold) {
                 const off = (lastX > 0) ? window.innerWidth : -window.innerWidth;
@@ -663,25 +639,20 @@ document.getElementById("like-btn").addEventListener("click", () => {
             }
             return;
         }
-        // Handle up swipe release
         if (draggingDirection === "vertical") {
             let cardHeight = mainCard.offsetHeight || 360;
             const upThreshold = Math.max(cardHeight * upSwipeFraction, minUpPx);
             if (Math.abs(lastY) > upThreshold) {
-                // Animate up and fav
                 mainCard.style.transform = `translateY(${-window.innerHeight * 1.1}px)`;
-                // calculate percentSwiped for star popup, then show with percent
                 const percentSwiped = Math.min(Math.abs(lastY) / upThreshold, 1.0);
                 showSwipePopup("star", percentSwiped);
                 const handler = () => {
                     mainCard.removeEventListener('transitionend', handler);
                     clearAllPopups();
-                    // favorite the song (likeSong with "favorite: true"? Or just use likeSong and apply UI effect)
                     handleSongSwitch(() => {
                         logListen();
                         if (typeof window.currentSongObject === "object" && window.currentSongObject) {
                             try {
-                                // naive .favorited property, user code can adapt as needed
                                 window.currentSongObject.favorited = true;
                             } catch { }
                         }
@@ -698,7 +669,6 @@ document.getElementById("like-btn").addEventListener("click", () => {
     }
 
     function detectDirection(dx, dy) {
-        // Use abs values, handle either pure dx or dy, or at least 2.2× dominant axis
         if (Math.abs(dx) > Math.abs(dy) * 2.2) return "horizontal";
         if (Math.abs(dy) > Math.abs(dx) * 2.2) return "vertical";
         if (Math.abs(dx) > Math.abs(dy)) return "horizontal";
@@ -706,7 +676,6 @@ document.getElementById("like-btn").addEventListener("click", () => {
     }
 
     function onTouchStart(e) {
-        // allow only on main card
         mainCard = document.getElementById("mainCard");
         if (!mainCard) return;
         if (e.touches.length > 1) return;
@@ -740,25 +709,18 @@ document.getElementById("like-btn").addEventListener("click", () => {
         if (!draggingDirection) {
             draggingDirection = detectDirection(dx, dy);
         }
-        // Horizontal (left/right) like/dislike
         if (draggingDirection === "horizontal") {
             lastX = dx;
             setCardTransition(mainCard, false);
             setCardX(mainCard, dx);
-            // Remove star icon if present
             document.querySelectorAll(".starPopup.iconPopup").forEach(el => el.remove());
-        }
-        // Vertical (up) favoriting
-        else if (draggingDirection === "vertical") {
-            // We only allow upward swipes (drag up)
+        } else if (draggingDirection === "vertical") {
             if (dy < 0) {
                 lastY = dy;
                 setCardTransition(mainCard, false);
                 setCardY(mainCard, dy);
-                // Remove regular left/right icons if present
                 document.querySelectorAll(".dislikePopup.iconPopup, .likePopup.iconPopup").forEach(el => el.remove());
             } else {
-                // No drag down
                 lastY = 0;
                 setCardY(mainCard, 0);
                 document.querySelectorAll(".starPopup.iconPopup").forEach(el => el.remove());
@@ -797,10 +759,9 @@ document.getElementById("like-btn").addEventListener("click", () => {
     observeTarget();
 })();
 
-
-// ==================================
-// ========= MENU TOGGLING ==========
-// ==================================
+// ==============================
+// ========== MENU TOGGLING =====
+// ==============================
 menuToggleElements.forEach(el => {
     el.addEventListener("click", () => {
         const cardView = document.getElementById("cardView");
@@ -817,9 +778,9 @@ menuToggleElements.forEach(el => {
     });
 });
 
-// ==================================
-// ========== PLAYLIST UI ===========
-// ==================================
+// ==============================
+// ========== PLAYLIST UI =======
+// ==============================
 function renderPlaylistSelection(playlists) {
     const playlistSelectionDiv = document.getElementById("playlistSelection");
     playlistSelectionDiv.innerHTML = "";
@@ -883,9 +844,10 @@ cardViewMenuButton.addEventListener("click", () => {
     renderSongList(playlists, selectedPlaylistIndex);
 });
 
-// ------------ DROPDOWN EXPAND/COLLAPSE LOGIC REWRITE --------------
+// ==============================
+// === DROPDOWN EXPAND/COLLAPSE =
+// ==============================
 (function () {
-    // Get the dropdown and selection UI elements.
     const dropdown = document.getElementById("playlistSelectionDropdown");
     const selectionDiv = document.getElementById("playlistSelection");
 
@@ -894,45 +856,66 @@ cardViewMenuButton.addEventListener("click", () => {
         dropdownIcon = dropdown.querySelector("svg") || dropdown;
     }
 
-    // Toggle logic: expand if not expanded, collapse if expanded
     function expandDropdown() {
         if (!playlistDropdownExpanded) {
             const playlists = requestPlaylistList();
             playlistDropdownExpanded = true;
-            selectionDiv.style.height = "auto";
+            const collapsedHeight = selectionDiv.offsetHeight;
+            renderPlaylistSelection(playlists);
+            const expandedHeight = selectionDiv.scrollHeight;
+            selectionDiv.style.height = `${collapsedHeight}px`;
+            selectionDiv.offsetHeight;
+            requestAnimationFrame(() => {
+                selectionDiv.style.height = `${expandedHeight}px`;
+                const handleTransitionEnd = (e) => {
+                    if (e.target === selectionDiv && e.propertyName === 'height') {
+                        selectionDiv.removeEventListener('transitionend', handleTransitionEnd);
+                        selectionDiv.style.height = "auto";
+                    }
+                };
+                selectionDiv.addEventListener('transitionend', handleTransitionEnd);
+            });
             if (dropdown) {
                 dropdown.style.transform = "rotate(180deg)";
                 dropdown.style.top = "calc((16 - 1) / var(--simWidth) * 100vw)";
             }
-            renderPlaylistSelection(playlists);
         }
     }
     function collapseDropdown() {
         if (playlistDropdownExpanded) {
             const playlists = requestPlaylistList();
             playlistDropdownExpanded = false;
-            selectionDiv.style.height = "";
-            selectionDiv.style.removeProperty("height");
+            const expandedHeight = selectionDiv.scrollHeight;
+            renderPlaylistSelection(playlists);
+            const collapsedHeight = selectionDiv.scrollHeight;
+            selectionDiv.style.height = `${expandedHeight}px`;
+            selectionDiv.offsetHeight;
+            requestAnimationFrame(() => {
+                selectionDiv.style.height = `${collapsedHeight}px`;
+                const handleTransitionEnd = (e) => {
+                    if (e.target === selectionDiv && e.propertyName === 'height') {
+                        selectionDiv.removeEventListener('transitionend', handleTransitionEnd);
+                        selectionDiv.style.height = "";
+                        selectionDiv.style.removeProperty("height");
+                    }
+                };
+                selectionDiv.addEventListener('transitionend', handleTransitionEnd);
+            });
             if (dropdown) {
                 dropdown.style.transform = "";
                 dropdown.style.top = "";
             }
-            renderPlaylistSelection(playlists);
         }
     }
 
-    // Listen for clicks anywhere inside the dropdown selection area to expand
     if (selectionDiv) {
-        selectionDiv.addEventListener("click", function(e) {
-            // If already expanded, don't trigger (collapse is only via dropdown icon)
+        selectionDiv.addEventListener("click", function (e) {
             if (playlistDropdownExpanded) return;
             expandDropdown();
         }, true);
     }
-    // Listen for click on dropdown icon for both expand and collapse
     if (dropdown) {
         dropdown.addEventListener("click", function (e) {
-            // Stop click from bubbling to selectionDiv's listener, so clicking icon doesn't double-toggle
             e.stopPropagation();
             if (!playlistDropdownExpanded) {
                 expandDropdown();
@@ -940,7 +923,6 @@ cardViewMenuButton.addEventListener("click", () => {
                 collapseDropdown();
             }
         }, true);
-        // If svg within dropdown, also respond so clicking inner svg works on all browser event models
         if (dropdownIcon && dropdownIcon !== dropdown) {
             dropdownIcon.addEventListener("click", function (e) {
                 e.stopPropagation();
@@ -954,27 +936,21 @@ cardViewMenuButton.addEventListener("click", () => {
     }
 })();
 
-// ---------------------------------------------------------------
-
-// SEARCH FUNCTIONALITY
-
+// ==============================
+// ===== SEARCH FUNCTIONALITY ===
+// ==============================
 (function setupSearchMenuHandlers() {
     const searchInput = document.getElementById("menuTextInput");
     const clearButton = document.getElementById("clearSearchButton");
 
-    // We'll keep a reference to the last search string
     let lastSearchValue = "";
 
-    // Function to "normalize" a string for forgiving search (removes apostrophes, commas, quotes, and some common punctuation, and lowercases)
     function normalizeSearchString(str) {
         if (typeof str !== "string") return "";
-        // Remove a list of common punctuation and white space on ends, and lowercase
-        // Includes: apostrophes, commas, quotes, dots, dashes, parens, slashes, colons, semicolons, exclam, question, etc.
-        // The point is to match letters and digits but ignore minor separators
         return str
             .toLowerCase()
             .replace(/['’"`,.\(\)\-:;!?\/\\\[\]{}]/g, "")
-            .replace(/\s+/g, " ") // collapse multiple whitespace to single space
+            .replace(/\s+/g, " ")
             .trim();
     }
 
@@ -984,8 +960,6 @@ cardViewMenuButton.addEventListener("click", () => {
             : "";
     }
 
-    // Redefine renderSongList for search support.
-    // We expose this function globally so other code (like playlist/nav) can use it.
     window.renderSongList = async function (playlists, playlistIdx = selectedPlaylistIndex, searchQuery) {
         const listItemsDiv = document.getElementById("listItems");
         if (!listItemsDiv) return;
@@ -997,18 +971,15 @@ cardViewMenuButton.addEventListener("click", () => {
         if (!playlistObj || !Array.isArray(playlistObj.songList)) return;
         let songList = playlistObj.songList;
 
-        // --- FILTER FOR SEARCH ---
         if (typeof searchQuery === "string" && searchQuery.length > 0) {
             const rawQ = searchQuery.trim();
             const q = normalizeSearchString(rawQ);
 
-            // Helper for checking a property forgivingly
             function includesForgiving(field) {
                 if (!field) return false;
                 return normalizeSearchString(String(field)).includes(q);
             }
 
-            // Match in name/title, artist, or rank, forgiving punctuation
             songList = songList.filter(
                 song =>
                     includesForgiving(song.title) ||
@@ -1019,7 +990,6 @@ cardViewMenuButton.addEventListener("click", () => {
             );
         }
 
-        // Attach "share" click logic (move outside the loop if called multiple times)
         document.addEventListener("click", async (e) => {
             const share = e.target.closest(".share");
             if (share) {
@@ -1034,7 +1004,6 @@ cardViewMenuButton.addEventListener("click", () => {
             }
         });
 
-        // Render a single menu item (factored as helper)
         const renderSongMenuItem = async (song) => {
             const query = song.title || song.name || "";
             if (window.debug) console.log(song);
@@ -1050,7 +1019,6 @@ cardViewMenuButton.addEventListener("click", () => {
             if (!songData) return null;
             const menuItem = document.createElement("div");
             menuItem.className = "menuItem";
-            // part1: image & info
             const part1 = document.createElement("div");
             part1.className = "part1";
             const img = document.createElement("img");
@@ -1070,7 +1038,6 @@ cardViewMenuButton.addEventListener("click", () => {
                 }
             `;
             part1.appendChild(img); part1.appendChild(songInfo);
-            // part2: title & artist
             const part2 = document.createElement("div");
             part2.className = "part2";
             const title = document.createElement("p");
@@ -1080,10 +1047,8 @@ cardViewMenuButton.addEventListener("click", () => {
             artist.className = "artist";
             artist.textContent = songData?.artistName || song.artist || "";
             part2.appendChild(title); part2.appendChild(artist);
-            // part3: icons
             const part3 = document.createElement("div");
             part3.className = "part3";
-            // star
             const starDiv = document.createElement("div");
             starDiv.className = "star";
             if (song.favorited) starDiv.classList.add("starred");
@@ -1102,7 +1067,6 @@ cardViewMenuButton.addEventListener("click", () => {
                 }
             });
             part3.appendChild(starDiv);
-            // share
             const shareDiv = document.createElement("div");
             shareDiv.className = "share";
             shareDiv.dataset.songName = song.name || song.title;
@@ -1111,14 +1075,11 @@ cardViewMenuButton.addEventListener("click", () => {
             shareDiv.dataset.link = songData.trackViewUrl;
             shareDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1" /><path d="M12 14v-11" /><path d="M9 6l3 -3l3 3" /></svg>`;
             part3.appendChild(shareDiv);
-            // qr
             const qrCodeDiv = document.createElement("div");
             qrCodeDiv.className = "qrCode";
             qrCodeDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 17l0 .01" /><path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 7l0 .01" /><path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M17 7l0 .01" /><path d="M14 14l3 0" /><path d="M20 14l0 .01" /><path d="M14 14l0 3" /><path d="M14 20l3 0" /><path d="M17 17l3 0" /><path d="M20 17l0 3" /></svg>`;
             part3.appendChild(qrCodeDiv);
             qrCodeDiv.dataset.link = songData.trackViewUrl;
-
-
             menuItem.appendChild(part1); menuItem.appendChild(part2); menuItem.appendChild(part3);
             return menuItem;
         };
@@ -1136,32 +1097,24 @@ cardViewMenuButton.addEventListener("click", () => {
         }
     }
 
-document.addEventListener("click", (e) => {
-    const qrBtn = e.target.closest(".qrCode");
-    if (!qrBtn) return;
-
-    const link = qrBtn.dataset.link;
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(link)}`;
-
-    const overlay = document.createElement("div");
-    overlay.className = "qrOverlay";
-
-    overlay.innerHTML = `
+    document.addEventListener("click", (e) => {
+        const qrBtn = e.target.closest(".qrCode");
+        if (!qrBtn) return;
+        const link = qrBtn.dataset.link;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(link)}`;
+        const overlay = document.createElement("div");
+        overlay.className = "qrOverlay";
+        overlay.innerHTML = `
         <div class="qrCard">
             <img class="qrImage" src="${qrUrl}" alt="QR Code">
             <button class="qrClose">Close</button>
         </div>
     `;
-
-    document.body.appendChild(overlay);
-
-    overlay.querySelector(".qrClose").addEventListener("click", () => {
-        overlay.remove();
+        document.body.appendChild(overlay);
+        overlay.querySelector(".qrClose").addEventListener("click", () => {
+            overlay.remove();
+        });
     });
-});
-
-
-
 
     if (searchInput) {
         searchInput.addEventListener("input", async e => {
@@ -1180,9 +1133,9 @@ document.addEventListener("click", (e) => {
     }
 })();
 
-// ==================================
-// ========= TITLE MARQUEE ==========
-// ==================================
+// ==============================
+// ======= TITLE MARQUEE ========
+// ==============================
 function applyTitleMarqueeIfNeeded(el) {
     requestAnimationFrame(() => {
         if (el.scrollWidth <= el.clientWidth + 2) return;
@@ -1223,29 +1176,23 @@ function applyTitleMarqueeIfNeeded(el) {
     });
 }
 
-// ====================================
-// ======= QR CODE GENERATOR =========
-// ====================================
+// ==============================
+// ===== QR CODE GENERATOR ======
+// ==============================
 function showQRPopup(link) {
     const overlay = document.createElement("div");
     overlay.className = "qrOverlay";
-
     const popup = document.createElement("div");
     popup.className = "qrPopup";
-
     popup.innerHTML = `
         <img class="qrImage" 
              src="https://chart.googleapis.com/chart?cht=qr&chs=500x500&chl=${encodeURIComponent(link)}" 
              alt="QR Code">
-
         <p class="qrText">Scan to open</p>
         <button class="qrClose">Close</button>
     `;
-
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
-
-    // Close when clicking button or background
     overlay.addEventListener("click", (e) => {
         if (e.target === overlay || e.target.classList.contains("qrClose")) {
             overlay.remove();
@@ -1253,10 +1200,9 @@ function showQRPopup(link) {
     });
 }
 
-
-// ====================================
-// ======= iOS RANGE HANDLING =========
-// ====================================
+// ==============================
+// ===== iOS RANGE HANDLING =====
+// ==============================
 function iosRangeTouchHandler(e) {
     if (e.touches.length > 1) return;
     const input = e.target;
@@ -1288,9 +1234,9 @@ function attachIOSRangeHandlers() {
 }
 attachIOSRangeHandlers();
 
-// ====================================
-// ========== INIT SONGS ==============
-// ====================================
+// ==============================
+// ========= INIT SONGS =========
+// ==============================
 (async function initSongs() {
     currentSong = requestSong();
     nextSong = requestSong();
@@ -1299,21 +1245,20 @@ attachIOSRangeHandlers();
     lockCardsHeightOnceLoaded();
 })();
 
-// ====================================
-// ========== CARD HEIGHT =============
-// ====================================
+// ==============================
+// ========= CARD HEIGHT ========
+// ==============================
 function lockCardsHeightOnceLoaded(mainEl = null, nextEl = null) {
     const cardsContainer = document.getElementById("cards");
     if (cardsContainer.dataset.locked === "true") return;
     mainEl ||= document.getElementById("mainCard");
     nextEl ||= document.getElementById("nextCard");
     if (!mainEl || !nextEl) return;
-    // code was commented, left here
 }
 
-// ==================================
-// ======= BORDER RADIUS ============
-// ==================================
+// ==============================
+// ========= BORDER RADIUS ======
+// ==============================
 const rerunApplySquircles = () => {
     if (typeof window.applySquircles === "function") {
         window.applySquircles();

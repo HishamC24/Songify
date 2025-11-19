@@ -431,6 +431,7 @@ input[type="range"]::-ms-thumb {
   right: calc(16 / var(--simWidth) * 100vw);
   width: calc(32 / var(--simWidth) * 100vw);
   height: calc(32 / var(--simWidth) * 100vw);
+  transition: all 0.25s ease-in-out;
 }
 #playlistSelection {
   display: flex;
@@ -444,11 +445,13 @@ input[type="range"]::-ms-thumb {
   width: calc((var(--simWidth) - 96) / var(--simWidth) * 100vw);
   height: calc(32 / var(--simWidth) * 100vw);
   gap: calc(16 / var(--simWidth) * 100vw);
+  transition: all 0.25s ease-in-out;
 }
 .playlistSelectionItem {
   display: flex;
   align-items: center;
   gap: calc(8 / var(--simWidth) * 100vw);
+  transition: all 0.25s ease-in-out;
 }
 .playlistSelectionItem.unselected {
   opacity: 0;
