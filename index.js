@@ -127,7 +127,11 @@ function formatTime(seconds) {
     const s = Math.floor(seconds % 60);
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
+
+// FIX (edit): Prevent duplicate copyToast
 function showCopyToast(message = "Link copied") {
+    // Remove any existing copyToast
+    document.querySelectorAll(".copyToast").forEach(el => el.remove());
     const toast = document.createElement("div");
     toast.className = "copyToast";
     toast.textContent = message;
