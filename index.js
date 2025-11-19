@@ -885,6 +885,7 @@ cardViewMenuButton.addEventListener("click", () => {
 
 // ------------ DROPDOWN EXPAND/COLLAPSE LOGIC REWRITE --------------
 (function () {
+    // Get the dropdown and selection UI elements.
     const dropdown = document.getElementById("playlistSelectionDropdown");
     const selectionDiv = document.getElementById("playlistSelection");
 
@@ -893,9 +894,9 @@ cardViewMenuButton.addEventListener("click", () => {
         dropdownIcon = dropdown.querySelector("svg") || dropdown;
     }
 
-    function onSelectionDivClick(e) {
+    // Toggle logic: expand if not expanded, collapse if expanded
+    function expandDropdown() {
         if (!playlistDropdownExpanded) {
-            if (dropdown && dropdown.contains(e.target)) return;
             const playlists = requestPlaylistList();
             playlistDropdownExpanded = true;
             selectionDiv.style.height = "auto";
@@ -906,34 +907,49 @@ cardViewMenuButton.addEventListener("click", () => {
             renderPlaylistSelection(playlists);
         }
     }
-
-    function onDropdownIconClick(e) {
+    function collapseDropdown() {
         if (playlistDropdownExpanded) {
-            if (
-                (e.target === dropdownIcon) ||
-                (dropdownIcon && dropdownIcon.contains && dropdownIcon.contains(e.target)) ||
-                (e.target === dropdown)
-            ) {
-                const playlists = requestPlaylistList();
-                playlistDropdownExpanded = false;
-                selectionDiv.style.height = "";
-                selectionDiv.style.removeProperty("height");
-                if (dropdown) {
-                    dropdown.style.transform = "";
-                    dropdown.style.top = "";
-                }
-                renderPlaylistSelection(playlists);
+            const playlists = requestPlaylistList();
+            playlistDropdownExpanded = false;
+            selectionDiv.style.height = "";
+            selectionDiv.style.removeProperty("height");
+            if (dropdown) {
+                dropdown.style.transform = "";
+                dropdown.style.top = "";
             }
+            renderPlaylistSelection(playlists);
         }
     }
 
+    // Listen for clicks anywhere inside the dropdown selection area to expand
     if (selectionDiv) {
-        selectionDiv.addEventListener("click", onSelectionDivClick, true);
+        selectionDiv.addEventListener("click", function(e) {
+            // If already expanded, don't trigger (collapse is only via dropdown icon)
+            if (playlistDropdownExpanded) return;
+            expandDropdown();
+        }, true);
     }
+    // Listen for click on dropdown icon for both expand and collapse
     if (dropdown) {
-        dropdown.addEventListener("click", onDropdownIconClick, true);
+        dropdown.addEventListener("click", function (e) {
+            // Stop click from bubbling to selectionDiv's listener, so clicking icon doesn't double-toggle
+            e.stopPropagation();
+            if (!playlistDropdownExpanded) {
+                expandDropdown();
+            } else {
+                collapseDropdown();
+            }
+        }, true);
+        // If svg within dropdown, also respond so clicking inner svg works on all browser event models
         if (dropdownIcon && dropdownIcon !== dropdown) {
-            dropdownIcon.addEventListener("click", onDropdownIconClick, true);
+            dropdownIcon.addEventListener("click", function (e) {
+                e.stopPropagation();
+                if (!playlistDropdownExpanded) {
+                    expandDropdown();
+                } else {
+                    collapseDropdown();
+                }
+            }, true);
         }
     }
 })();
@@ -1071,8 +1087,8 @@ cardViewMenuButton.addEventListener("click", () => {
             const starDiv = document.createElement("div");
             starDiv.className = "star";
             if (song.favorited) starDiv.classList.add("starred");
-            const STARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 3l18 18" /><path d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917" /></svg>`;
-            const UNSTARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"/></svg>`;
+            const UNSTARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 3l18 18" /><path d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917" /></svg>`;
+            const STARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"/></svg>`;
             starDiv.innerHTML = song.favorited ? STARRED_SVG : UNSTARRED_SVG;
             starDiv.addEventListener("click", (e) => {
                 e.stopPropagation();
