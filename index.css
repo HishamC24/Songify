@@ -602,6 +602,7 @@ input[type="range"]::-ms-thumb {
   padding-left: calc(24 / var(--simWidth) * 100vw);
   border: none;
   color: #000000;
+  font-size: calc(16 / var(--simWidth) * 100vw);
 }
 #menuViewMenuButton > svg {
   /* Welcome to the world of Optical Balance! :) - Hisham C. */
