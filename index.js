@@ -786,12 +786,10 @@ function renderPlaylistSelection(playlists) {
     playlistSelectionDiv.innerHTML = "";
     let sortedPlaylists, effectiveLength, indexMap;
     if (playlistDropdownExpanded) {
-        // Build sortedPlaylists & a map from displayed idx -> real index
         sortedPlaylists = [
             playlists[selectedPlaylistIndex],
             ...playlists.filter((_, i) => i !== selectedPlaylistIndex)
         ];
-        // Build a mapping from sorted index to original playlist index
         indexMap = [selectedPlaylistIndex];
         for (let i = 0; i < playlists.length; ++i) {
             if (i !== selectedPlaylistIndex) indexMap.push(i);
@@ -804,7 +802,7 @@ function renderPlaylistSelection(playlists) {
     }
     for (let idxSorted = 0; idxSorted < effectiveLength; ++idxSorted) {
         const playlistObj = sortedPlaylists[idxSorted];
-        const realIdx = indexMap[idxSorted]; // always the real playlist index in playlists array
+        const realIdx = indexMap[idxSorted];
         if (!playlistObj) continue;
         const itemDiv = document.createElement("div");
         itemDiv.classList.add("playlistSelectionItem");
@@ -851,17 +849,14 @@ cardViewMenuButton.addEventListener("click", () => {
     const dropdown = document.getElementById("playlistSelectionDropdown");
     const selectionDiv = document.getElementById("playlistSelection");
 
-    // Store a reference to the SVG icon inside the dropdown button (assumes first <svg>)
     let dropdownIcon;
     if (dropdown) {
         dropdownIcon = dropdown.querySelector("svg") || dropdown;
     }
 
-    // If the dropdown is not expanded, clicking anywhere on the selectionDiv (excluding dropdown/its children) should expand
     function onSelectionDivClick(e) {
-        // Only expand if currently collapsed
         if (!playlistDropdownExpanded) {
-            if (dropdown && dropdown.contains(e.target)) return; // ignore if clicked on dropdown button itself
+            if (dropdown && dropdown.contains(e.target)) return;
             const playlists = requestPlaylistList();
             playlistDropdownExpanded = true;
             selectionDiv.style.height = "auto";
@@ -873,12 +868,8 @@ cardViewMenuButton.addEventListener("click", () => {
         }
     }
 
-    // Only collapse if clicked exactly on the icon (svg or dropdown element itself) and currently expanded
     function onDropdownIconClick(e) {
-        // Only collapse if expanded
         if (playlistDropdownExpanded) {
-            // Allow clicking either the <svg> or the button (if either is clicked directly or as a descendant)
-            // So, require the click to be on the dropdown button or its svg/icon
             if (
                 (e.target === dropdownIcon) ||
                 (dropdownIcon && dropdownIcon.contains && dropdownIcon.contains(e.target)) ||
@@ -898,12 +889,10 @@ cardViewMenuButton.addEventListener("click", () => {
     }
 
     if (selectionDiv) {
-        // Remove any existing event listeners before re-attaching
         selectionDiv.addEventListener("click", onSelectionDivClick, true);
     }
     if (dropdown) {
         dropdown.addEventListener("click", onDropdownIconClick, true);
-        // Also handle clicks on the SVG icon if dropdown is a button wrapping it
         if (dropdownIcon && dropdownIcon !== dropdown) {
             dropdownIcon.addEventListener("click", onDropdownIconClick, true);
         }
@@ -912,143 +901,199 @@ cardViewMenuButton.addEventListener("click", () => {
 
 // ---------------------------------------------------------------
 
-(function setupClearButtonHandler() {
-    const clearButton = document.getElementById("clearSearchButton");
+// SEARCH FUNCTIONALITY
+
+(function setupSearchMenuHandlers() {
     const searchInput = document.getElementById("menuTextInput");
-    if (!clearButton || !searchInput) return;
-    clearButton.addEventListener("click", function () {
-        searchInput.value = "";
-        const event = new Event('input', { bubbles: true });
-        searchInput.dispatchEvent(event);
-    });
-})();
+    const clearButton = document.getElementById("clearSearchButton");
 
-async function renderSongList(playlists, playlistIdx = selectedPlaylistIndex) {
-    const listItemsDiv = document.getElementById("listItems");
-    if (!listItemsDiv) return;
-    listItemsDiv.innerHTML = "";
-    let playlistArr;
-    const playlistName = playlists[playlistIdx]?.name || "All";
-    playlistArr = requestSongList(playlistName);
-    const playlistObj = Array.isArray(playlistArr) && playlistArr.length > 0 ? playlistArr[0] : null;
-    if (!playlistObj || !Array.isArray(playlistObj.songList)) return;
-    const songList = playlistObj.songList;
+    // We'll keep a reference to the last search string
+    let lastSearchValue = "";
 
-    // Attach "share" click logic (move outside the loop if called multiple times)
-    document.addEventListener("click", async (e) => {
-        const share = e.target.closest(".share");
-        if (share) {
-            const link = share.dataset.link;
-            if (!link) return console.error("❌ No link found!");
-            try {
-                await navigator.clipboard.writeText(link);
-                showCopyToast("Link copied!");
-            } catch (err) {
-                console.error("Failed to copy:", err);
+    // Function to "normalize" a string for forgiving search (removes apostrophes, commas, quotes, and some common punctuation, and lowercases)
+    function normalizeSearchString(str) {
+        if (typeof str !== "string") return "";
+        // Remove a list of common punctuation and white space on ends, and lowercase
+        // Includes: apostrophes, commas, quotes, dots, dashes, parens, slashes, colons, semicolons, exclam, question, etc.
+        // The point is to match letters and digits but ignore minor separators
+        return str
+            .toLowerCase()
+            .replace(/['’"`,.\(\)\-:;!?\/\\\[\]{}]/g, "")
+            .replace(/\s+/g, " ") // collapse multiple whitespace to single space
+            .trim();
+    }
+
+    function getSearchValue() {
+        return (searchInput && typeof searchInput.value === "string")
+            ? searchInput.value.trim()
+            : "";
+    }
+
+    // Redefine renderSongList for search support.
+    // We expose this function globally so other code (like playlist/nav) can use it.
+    window.renderSongList = async function (playlists, playlistIdx = selectedPlaylistIndex, searchQuery) {
+        const listItemsDiv = document.getElementById("listItems");
+        if (!listItemsDiv) return;
+        listItemsDiv.innerHTML = "";
+        let playlistArr;
+        const playlistName = playlists[playlistIdx]?.name || "All";
+        playlistArr = requestSongList(playlistName);
+        const playlistObj = Array.isArray(playlistArr) && playlistArr.length > 0 ? playlistArr[0] : null;
+        if (!playlistObj || !Array.isArray(playlistObj.songList)) return;
+        let songList = playlistObj.songList;
+
+        // --- FILTER FOR SEARCH ---
+        if (typeof searchQuery === "string" && searchQuery.length > 0) {
+            const rawQ = searchQuery.trim();
+            const q = normalizeSearchString(rawQ);
+
+            // Helper for checking a property forgivingly
+            function includesForgiving(field) {
+                if (!field) return false;
+                return normalizeSearchString(String(field)).includes(q);
             }
+
+            // Match in name/title, artist, or rank, forgiving punctuation
+            songList = songList.filter(
+                song =>
+                    includesForgiving(song.title) ||
+                    includesForgiving(song.name) ||
+                    includesForgiving(song.artist) ||
+                    (song.rank != null && normalizeSearchString(String(song.rank)).includes(q)) ||
+                    includesForgiving(song.genre)
+            );
         }
-    });
 
-    // Render a single menu item (factored as helper)
-    const renderSongMenuItem = async (song) => {
-        const query = song.title || song.name || "";
-        if (window.debug) console.log(song);
-        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}`;
-        let songData = null;
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            const results = (data.results || []).filter((item) => item.kind === "song");
-            if (!results.length) songData = null;
-            else songData = results[0];
-        } catch (e) { songData = null; }
-        if (!songData) return null;
-        const menuItem = document.createElement("div");
-        menuItem.className = "menuItem";
-        // part1: image & info
-        const part1 = document.createElement("div");
-        part1.className = "part1";
-        const img = document.createElement("img");
-        img.className = "menuItemImage";
-        img.src = songData.artworkUrl100 ? songData.artworkUrl100.replace("100x100", "1500x1500") : (song.image || "");
-        img.alt = songData.trackName && songData.artistName
-            ? `${songData.trackName} by ${songData.artistName}`
-            : (query ? query : "Unknown");
-        const songInfo = document.createElement("p");
-        songInfo.className = "songInfo";
-        songInfo.innerHTML = `
-            Genre: ${songData?.primaryGenreName || song.genre || "Unknown"}<br />
-            Rank: ${song.rank != null ? song.rank : "-"}<br />
-            Release: ${songData?.releaseDate
-                ? (typeof formatDate === "function" ? formatDate(songData.releaseDate) : songData.releaseDate.slice(0, 10))
-                : (song.release || "")
-            }
-        `;
-        part1.appendChild(img); part1.appendChild(songInfo);
-        // part2: title & artist
-        const part2 = document.createElement("div");
-        part2.className = "part2";
-        const title = document.createElement("p");
-        title.className = "title";
-        title.textContent = songData?.trackName || song.title || "Untitled";
-        const artist = document.createElement("p");
-        artist.className = "artist";
-        artist.textContent = songData?.artistName || song.artist || "";
-        part2.appendChild(title); part2.appendChild(artist);
-        // part3: icons
-        const part3 = document.createElement("div");
-        part3.className = "part3";
-        // star
-        const starDiv = document.createElement("div");
-        starDiv.className = "star";
-        if (song.favorited) starDiv.classList.add("starred");
-        // Save favorite SVGs
-        const STARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 3l18 18" /><path d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917" /></svg>`;
-        const UNSTARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"/></svg>`;
-        starDiv.innerHTML = song.favorited ? STARRED_SVG : UNSTARRED_SVG;
-        // Add toggling event for star SVG
-        starDiv.addEventListener("click", (e) => {
-            e.stopPropagation(); // Prevent parent menu click
-            song.favorited = !song.favorited;
-            if (song.favorited) {
-                starDiv.classList.add("starred");
-                starDiv.innerHTML = STARRED_SVG;
-            } else {
-                starDiv.classList.remove("starred");
-                starDiv.innerHTML = UNSTARRED_SVG;
+        // Attach "share" click logic (move outside the loop if called multiple times)
+        document.addEventListener("click", async (e) => {
+            const share = e.target.closest(".share");
+            if (share) {
+                const link = share.dataset.link;
+                if (!link) return console.error("❌ No link found!");
+                try {
+                    await navigator.clipboard.writeText(link);
+                    showCopyToast("Link copied!");
+                } catch (err) {
+                    console.error("Failed to copy:", err);
+                }
             }
         });
-        part3.appendChild(starDiv);
-        // share
-        const shareDiv = document.createElement("div");
-        shareDiv.className = "share";
-        shareDiv.dataset.songName = song.name || song.title;
-        shareDiv.dataset.rank = song.rank;
-        shareDiv.dataset.playlist = playlistObj.name;
-        shareDiv.dataset.link = songData.trackViewUrl;
-        shareDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1" /><path d="M12 14v-11" /><path d="M9 6l3 -3l3 3" /></svg>`;
-        part3.appendChild(shareDiv);
-        // qr
-        const qrCodeDiv = document.createElement("div");
-        qrCodeDiv.className = "qrCode";
-        qrCodeDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 17l0 .01" /><path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 7l0 .01" /><path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M17 7l0 .01" /><path d="M14 14l3 0" /><path d="M20 14l0 .01" /><path d="M14 14l0 3" /><path d="M14 20l3 0" /><path d="M17 17l3 0" /><path d="M20 17l0 3" /></svg>`;
-        part3.appendChild(qrCodeDiv);
-        menuItem.appendChild(part1); menuItem.appendChild(part2); menuItem.appendChild(part3);
-        return menuItem;
-    };
 
-    let firstMenuItemAdded = false;
-    for (let i = 0; i < songList.length; ++i) {
-        const menuItem = await renderSongMenuItem(songList[i]);
-        if (menuItem) {
-            if (firstMenuItemAdded) {
-                listItemsDiv.appendChild(document.createElement("hr"));
+        // Render a single menu item (factored as helper)
+        const renderSongMenuItem = async (song) => {
+            const query = song.title || song.name || "";
+            if (window.debug) console.log(song);
+            const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}`;
+            let songData = null;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                const results = (data.results || []).filter((item) => item.kind === "song");
+                if (!results.length) songData = null;
+                else songData = results[0];
+            } catch (e) { songData = null; }
+            if (!songData) return null;
+            const menuItem = document.createElement("div");
+            menuItem.className = "menuItem";
+            // part1: image & info
+            const part1 = document.createElement("div");
+            part1.className = "part1";
+            const img = document.createElement("img");
+            img.className = "menuItemImage";
+            img.src = songData.artworkUrl100 ? songData.artworkUrl100.replace("100x100", "1500x1500") : (song.image || "");
+            img.alt = songData.trackName && songData.artistName
+                ? `${songData.trackName} by ${songData.artistName}`
+                : (query ? query : "Unknown");
+            const songInfo = document.createElement("p");
+            songInfo.className = "songInfo";
+            songInfo.innerHTML = `
+                Genre: ${songData?.primaryGenreName || song.genre || "Unknown"}<br />
+                Rank: ${song.rank != null ? song.rank : "-"}<br />
+                Release: ${songData?.releaseDate
+                    ? (typeof formatDate === "function" ? formatDate(songData.releaseDate) : songData.releaseDate.slice(0, 10))
+                    : (song.release || "")
+                }
+            `;
+            part1.appendChild(img); part1.appendChild(songInfo);
+            // part2: title & artist
+            const part2 = document.createElement("div");
+            part2.className = "part2";
+            const title = document.createElement("p");
+            title.className = "title";
+            title.textContent = songData?.trackName || song.title || "Untitled";
+            const artist = document.createElement("p");
+            artist.className = "artist";
+            artist.textContent = songData?.artistName || song.artist || "";
+            part2.appendChild(title); part2.appendChild(artist);
+            // part3: icons
+            const part3 = document.createElement("div");
+            part3.className = "part3";
+            // star
+            const starDiv = document.createElement("div");
+            starDiv.className = "star";
+            if (song.favorited) starDiv.classList.add("starred");
+            const STARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 3l18 18" /><path d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917" /></svg>`;
+            const UNSTARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"/></svg>`;
+            starDiv.innerHTML = song.favorited ? STARRED_SVG : UNSTARRED_SVG;
+            starDiv.addEventListener("click", (e) => {
+                e.stopPropagation();
+                song.favorited = !song.favorited;
+                if (song.favorited) {
+                    starDiv.classList.add("starred");
+                    starDiv.innerHTML = STARRED_SVG;
+                } else {
+                    starDiv.classList.remove("starred");
+                    starDiv.innerHTML = UNSTARRED_SVG;
+                }
+            });
+            part3.appendChild(starDiv);
+            // share
+            const shareDiv = document.createElement("div");
+            shareDiv.className = "share";
+            shareDiv.dataset.songName = song.name || song.title;
+            shareDiv.dataset.rank = song.rank;
+            shareDiv.dataset.playlist = playlistObj.name;
+            shareDiv.dataset.link = songData.trackViewUrl;
+            shareDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1" /><path d="M12 14v-11" /><path d="M9 6l3 -3l3 3" /></svg>`;
+            part3.appendChild(shareDiv);
+            // qr
+            const qrCodeDiv = document.createElement("div");
+            qrCodeDiv.className = "qrCode";
+            qrCodeDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 17l0 .01" /><path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 7l0 .01" /><path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M17 7l0 .01" /><path d="M14 14l3 0" /><path d="M20 14l0 .01" /><path d="M14 14l0 3" /><path d="M14 20l3 0" /><path d="M17 17l3 0" /><path d="M20 17l0 3" /></svg>`;
+            part3.appendChild(qrCodeDiv);
+            menuItem.appendChild(part1); menuItem.appendChild(part2); menuItem.appendChild(part3);
+            return menuItem;
+        };
+
+        let firstMenuItemAdded = false;
+        for (let i = 0; i < songList.length; ++i) {
+            const menuItem = await renderSongMenuItem(songList[i]);
+            if (menuItem) {
+                if (firstMenuItemAdded) {
+                    listItemsDiv.appendChild(document.createElement("hr"));
+                }
+                listItemsDiv.appendChild(menuItem);
+                firstMenuItemAdded = true;
             }
-            listItemsDiv.appendChild(menuItem);
-            firstMenuItemAdded = true;
         }
     }
-}
+
+    if (searchInput) {
+        searchInput.addEventListener("input", async e => {
+            lastSearchValue = getSearchValue();
+            const playlists = requestPlaylistList();
+            await window.renderSongList(playlists, selectedPlaylistIndex, lastSearchValue);
+        });
+    }
+    if (clearButton && searchInput) {
+        clearButton.addEventListener("click", async function () {
+            searchInput.value = "";
+            lastSearchValue = "";
+            const event = new Event('input', { bubbles: true });
+            searchInput.dispatchEvent(event);
+        });
+    }
+})();
 
 // ==================================
 // ========= TITLE MARQUEE ==========
