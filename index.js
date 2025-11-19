@@ -83,6 +83,15 @@ const likeIcon = `
 </div>
 `;
 
+const starIcon = `
+<div class="starPopup iconPopup">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"/>
+    </svg>
+</div>
+`;
+
 // ==============================
 // ========== STATE =============
 // ==============================
@@ -410,15 +419,19 @@ window.handleSongSwitch = handleSongSwitch;
 // ====================================
 // ========== SWIPE HANDLERS ==========
 // ====================================
-function showSwipePopup(type) {
+function showSwipePopup(type, percent = 1) {
     const existing = document.querySelector(".iconPopup");
     if (existing) existing.remove();
-    const popupHTML = type === "like" ? likeIcon : dislikeIcon;
+    let popupHTML;
+    if (type === "like") popupHTML = likeIcon;
+    else if (type === "dislike") popupHTML = dislikeIcon;
+    else if (type === "star") popupHTML = starIcon;
+    else return;
     document.body.insertAdjacentHTML("beforeend", popupHTML);
     const popup = document.querySelector(`.${type}Popup`);
     if (!popup) return;
-    popup.style.opacity = "1";
-    popup.style.transition = "opacity 0.4s ease";
+    popup.style.opacity = percent;
+    popup.style.transition = "opacity 0.25s ease-in-out";
     setTimeout(() => {
         popup.style.opacity = "0";
         popup.addEventListener("transitionend", () => popup.remove());
@@ -430,11 +443,17 @@ async function animateSwipe(direction, callback) {
         if (typeof callback === "function") callback();
         return;
     }
-    const off = (direction === "right" ? 1 : -1) * window.innerWidth;
+    let translateStr, angle = 0;
+    if (direction === "right") {
+        translateStr = `translateX(${window.innerWidth}px) rotate(12deg)`;
+    } else if (direction === "left") {
+        translateStr = `translateX(${-window.innerWidth}px) rotate(-12deg)`;
+    } else if (direction === "up") {
+        translateStr = `translateY(${-window.innerHeight * 1.1}px)`;
+        angle = 0;
+    }
     mainCard.style.transition = 'transform 0.25s ease-in-out';
-    const maxAngle = 12;
-    const angle = direction === "right" ? maxAngle : -maxAngle;
-    mainCard.style.transform = `translateX(${off}px) rotate(${angle}deg)`;
+    mainCard.style.transform = translateStr;
     function cleanupAndCallback() {
         mainCard.removeEventListener('transitionend', cleanupAndCallback);
         if (typeof callback === "function") callback();
@@ -498,51 +517,158 @@ document.getElementById("like-btn").addEventListener("click", () => {
 (function setupMainCardDrag() {
     // Drag-related state
     let mainCard = document.getElementById("mainCard");
-    let startX = 0, lastX = 0, dragging = false;
+    let startX = 0, startY = 0, lastX = 0, lastY = 0, dragging = false, draggingDirection = null;
     let cardWidth = mainCard ? mainCard.getBoundingClientRect().width : 0;
     const thresholdFraction = 0.33;
     const minThresholdPx = 120;
+    const upSwipeFraction = 0.25;
+    const minUpPx = 80;
 
     function setCardTransition(card, on) { card.style.transition = on ? 'transform 0.25s ease-in-out' : 'none'; }
+
+    function clearAllPopups() {
+        document.querySelectorAll(".iconPopup").forEach(popup => popup.remove());
+    }
+
+    function insertPopup(type, opacity = 1) {
+        const iconLocation = document.getElementById("body") || document.body;
+        let popupHTML = '';
+        if (type === "like") popupHTML = likeIcon;
+        else if (type === "dislike") popupHTML = dislikeIcon;
+        else if (type === "star") popupHTML = starIcon;
+        if (!popupHTML) return null;
+        iconLocation.insertAdjacentHTML("beforeend", popupHTML);
+        let popup = iconLocation.querySelector(`.${type}Popup`);
+        if (!popup) return null;
+        popup.style.opacity = opacity;
+        popup.style.transition = `opacity 0.08s`;
+        popup.style.pointerEvents = "none";
+
+        popup.style.removeProperty("position");
+        popup.style.removeProperty("top");
+        popup.style.removeProperty("left");
+        popup.style.removeProperty("width");
+        popup.style.removeProperty("height");
+        popup.style.removeProperty("zIndex");
+        popup.style.removeProperty("borderRadius");
+        popup.style.removeProperty("display");
+        popup.style.removeProperty("boxShadow");
+
+        return popup;
+    }
+
     function setCardX(card, x) {
+        // For left/right swipes
         const maxAngle = 12;
         const percentSwiped = Math.abs(x) / window.innerWidth * 4;
-        let iconLocation = document.getElementById("body");
-        let iconPopup = iconLocation.querySelector(".iconPopup");
-        if (x === 0 && iconPopup) iconPopup.remove();
-        if (x !== 0) {
-            if (iconPopup) iconPopup.remove();
-            if (x > 0) {
-                iconLocation.insertAdjacentHTML("beforeend", likeIcon);
-                iconLocation.querySelector(".likePopup").style.opacity = percentSwiped;
-            } else {
-                iconLocation.insertAdjacentHTML("beforeend", dislikeIcon);
-                iconLocation.querySelector(".dislikePopup").style.opacity = percentSwiped;
-            }
+        const iconLocation = document.getElementById("body") || document.body;
+        // Remove any not .starPopup
+        iconLocation.querySelectorAll(".likePopup, .dislikePopup").forEach(el => el.remove());
+        if (x === 0) return card.style.transform = ``;
+        if (x > 0) {
+            insertPopup("like", percentSwiped);
+        } else {
+            insertPopup("dislike", percentSwiped);
         }
         const angle = Math.max(-maxAngle, Math.min(maxAngle, (x / window.innerWidth) * maxAngle));
         card.style.transform = `translateX(${x}px) rotate(${angle}deg)`;
     }
+    function setCardY(card, y) {
+        // Up swipe (drag up)
+        const iconLocation = document.getElementById("body") || document.body;
+        // Remove any non-.starPopup iconPopups
+        iconLocation.querySelectorAll(".likePopup, .dislikePopup").forEach(el => el.remove());
+        iconLocation.querySelectorAll(".starPopup").forEach(el => el.remove());
+
+        if (y === 0) {
+            card.style.transform = "";
+            return;
+        }
+        // Animate Card
+        card.style.transform = `translateY(${y}px)`;
+
+        // Star icon
+        // Now percent swiped is relative to card height, using upSwipeFraction and minUpPx for consistency
+        // percentSwiped = Math.abs(y) / threshold-to-trigger
+        let cardHeight = mainCard ? mainCard.offsetHeight || 360 : 360;
+        const upThreshold = Math.max(cardHeight * upSwipeFraction, minUpPx);
+        const percentSwiped = Math.min(Math.abs(y) / upThreshold, 1.0);
+
+        insertPopup('star', percentSwiped);
+    }
+
     function handleRelease() {
         if (!mainCard) return;
-        const threshold = Math.max(cardWidth * thresholdFraction, minThresholdPx);
         setCardTransition(mainCard, true);
-        if (Math.abs(lastX) > threshold) {
-            const off = (lastX > 0) ? window.innerWidth : -window.innerWidth;
-            setCardX(mainCard, off);
-            const handler = () => {
-                if (lastX > 0) {
-                    handleSongSwitch(() => { logListen(); likeSong({ ...window.currentSongObject }); });
-                } else {
-                    handleSongSwitch(() => { logListen(); dislikeSong({ ...window.currentSongObject }); });
-                }
-            };
-            mainCard.addEventListener('transitionend', handler);
-        } else {
-            setCardX(mainCard, 0);
+
+        const threshold = Math.max(cardWidth * thresholdFraction, minThresholdPx);
+
+        // Handle left/right swipe release
+        if (draggingDirection === "horizontal") {
+            if (Math.abs(lastX) > threshold) {
+                const off = (lastX > 0) ? window.innerWidth : -window.innerWidth;
+                setCardX(mainCard, off);
+                const handler = () => {
+                    mainCard.removeEventListener('transitionend', handler);
+                    clearAllPopups();
+                    if (lastX > 0) {
+                        handleSongSwitch(() => { logListen(); likeSong({ ...window.currentSongObject }); });
+                    } else {
+                        handleSongSwitch(() => { logListen(); dislikeSong({ ...window.currentSongObject }); });
+                    }
+                };
+                mainCard.addEventListener('transitionend', handler);
+            } else {
+                setCardX(mainCard, 0);
+                clearAllPopups();
+            }
+            return;
+        }
+        // Handle up swipe release
+        if (draggingDirection === "vertical") {
+            let cardHeight = mainCard.offsetHeight || 360;
+            const upThreshold = Math.max(cardHeight * upSwipeFraction, minUpPx);
+            if (Math.abs(lastY) > upThreshold) {
+                // Animate up and fav
+                mainCard.style.transform = `translateY(${-window.innerHeight * 1.1}px)`;
+                // calculate percentSwiped for star popup, then show with percent
+                const percentSwiped = Math.min(Math.abs(lastY) / upThreshold, 1.0);
+                showSwipePopup("star", percentSwiped);
+                const handler = () => {
+                    mainCard.removeEventListener('transitionend', handler);
+                    clearAllPopups();
+                    // favorite the song (likeSong with "favorite: true"? Or just use likeSong and apply UI effect)
+                    handleSongSwitch(() => {
+                        logListen();
+                        if (typeof window.currentSongObject === "object" && window.currentSongObject) {
+                            try {
+                                // naive .favorited property, user code can adapt as needed
+                                window.currentSongObject.favorited = true;
+                            } catch { }
+                        }
+                        likeSong({ ...window.currentSongObject, favorited: true });
+                    });
+                };
+                mainCard.addEventListener('transitionend', handler);
+            } else {
+                setCardTransition(mainCard, true);
+                mainCard.style.transform = "";
+                clearAllPopups();
+            }
         }
     }
+
+    function detectDirection(dx, dy) {
+        // Use abs values, handle either pure dx or dy, or at least 2.2× dominant axis
+        if (Math.abs(dx) > Math.abs(dy) * 2.2) return "horizontal";
+        if (Math.abs(dy) > Math.abs(dx) * 2.2) return "vertical";
+        if (Math.abs(dx) > Math.abs(dy)) return "horizontal";
+        return "vertical";
+    }
+
     function onTouchStart(e) {
+        // allow only on main card
+        mainCard = document.getElementById("mainCard");
         if (!mainCard) return;
         if (e.touches.length > 1) return;
         const touch = e.touches[0];
@@ -550,26 +676,64 @@ document.getElementById("like-btn").addEventListener("click", () => {
         while (el && el !== mainCard) {
             if (el.classList && (el.classList.contains("seekbarContainer") || el.classList.contains("volumeContainer"))) {
                 dragging = false;
+                draggingDirection = null;
                 return;
             }
             el = el.parentElement;
         }
         dragging = true;
+        draggingDirection = null;
         setCardTransition(mainCard, false);
         startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
         lastX = 0;
+        lastY = 0;
     }
+
     function onTouchMove(e) {
         if (!dragging) return;
         if (e.touches.length > 1) return;
+        mainCard = document.getElementById("mainCard");
         if (!mainCard) return;
-        const dx = e.touches[0].clientX - startX;
-        lastX = dx;
-        setCardTransition(mainCard, false);
-        setCardX(mainCard, dx);
+        const touch = e.touches[0];
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+        if (!draggingDirection) {
+            draggingDirection = detectDirection(dx, dy);
+        }
+        // Horizontal (left/right) like/dislike
+        if (draggingDirection === "horizontal") {
+            lastX = dx;
+            setCardTransition(mainCard, false);
+            setCardX(mainCard, dx);
+            // Remove star icon if present
+            document.querySelectorAll(".starPopup.iconPopup").forEach(el => el.remove());
+        }
+        // Vertical (up) favoriting
+        else if (draggingDirection === "vertical") {
+            // We only allow upward swipes (drag up)
+            if (dy < 0) {
+                lastY = dy;
+                setCardTransition(mainCard, false);
+                setCardY(mainCard, dy);
+                // Remove regular left/right icons if present
+                document.querySelectorAll(".dislikePopup.iconPopup, .likePopup.iconPopup").forEach(el => el.remove());
+            } else {
+                // No drag down
+                lastY = 0;
+                setCardY(mainCard, 0);
+                document.querySelectorAll(".starPopup.iconPopup").forEach(el => el.remove());
+            }
+        }
         e.preventDefault();
     }
-    function onTouchEnd() { if (!dragging) return; dragging = false; handleRelease(); }
+
+    function onTouchEnd() {
+        if (!dragging) return;
+        dragging = false;
+        handleRelease();
+        draggingDirection = null;
+    }
     function cleanListeners(card) {
         card.removeEventListener('touchstart', onTouchStart);
         card.removeEventListener('touchmove', onTouchMove);
@@ -593,6 +757,7 @@ document.getElementById("like-btn").addEventListener("click", () => {
     attach();
     observeTarget();
 })();
+
 
 // ==================================
 // ========= MENU TOGGLING ==========
@@ -838,7 +1003,7 @@ async function renderSongList(playlists, playlistIdx = selectedPlaylistIndex) {
         starDiv.className = "star";
         if (song.favorited) starDiv.classList.add("starred");
         // Save favorite SVGs
-        const STARRED_SVG  = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 3l18 18" /><path d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917" /></svg>`;
+        const STARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 3l18 18" /><path d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917" /></svg>`;
         const UNSTARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"/></svg>`;
         starDiv.innerHTML = song.favorited ? STARRED_SVG : UNSTARRED_SVG;
         // Add toggling event for star SVG

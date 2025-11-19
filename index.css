@@ -393,6 +393,13 @@ input[type="range"]::-moz-range-thumb {
   left: calc(32 / var(--simWidth) * 100vw);
 }
 
+.starPopup {
+  background-color: rgba(0, 128, 255, 0.5);
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(100vh - ((128 + 128) / var(--simWidth) * 100vw));
+}
+
 .iconPopup > svg {
   width: calc(64 / var(--simWidth) * 100vw);
 }
