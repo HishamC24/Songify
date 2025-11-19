@@ -472,13 +472,50 @@ input[type="range"]::-ms-thumb {
 }
 .part1 {
   display: flex;
-  align-items: center;
+  align-items: start;
   gap: calc(16 / var(--simWidth) * 100vw);
+}
+.part1 .menuItemImageContainer {
+  position: relative;
+  width: calc(128 / var(--simWidth) * 100vw);
+  height: calc(128 / var(--simWidth) * 100vw);
+  cursor: pointer;
 }
 .part1 .menuItemImage {
   width: calc(128 / var(--simWidth) * 100vw);
   height: calc(128 / var(--simWidth) * 100vw);
   border-radius: calc(32 / var(--simWidth) * 100vw);
+  object-fit: cover;
+}
+.part1 .menuItemPlayPauseOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(128 / var(--simWidth) * 100vw);
+  height: calc(128 / var(--simWidth) * 100vw);
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: calc(32 / var(--simWidth) * 100vw);
+  backdrop-filter: blur(0.25rem);
+  -webkit-backdrop-filter: blur(0.25rem);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.25s ease-in-out;
+  pointer-events: none;
+}
+.part1 .menuItemImageContainer:hover .menuItemPlayPauseOverlay {
+  display: flex;
+  opacity: 1;
+}
+.part1 .menuItemPlayPauseOverlay[style*="display: flex"] {
+  display: flex !important;
+  opacity: 1 !important;
+}
+.part1 .menuItemPlayPauseOverlay svg {
+  width: calc(48 / var(--simWidth) * 100vw);
+  height: calc(48 / var(--simWidth) * 100vw);
+  color: #ffffff;
 }
 .part1 p {
   font-size: calc(24 / var(--simWidth) * 100vw);
@@ -526,7 +563,7 @@ input[type="range"]::-ms-thumb {
 }
 
 .star {
-  transition: background-color 0.25s ease-in-out;
+  transition: all 0.25s ease-in-out;
 }
 .star.starred {
   background-color: #0080ff;
@@ -596,7 +633,7 @@ input[type="range"]::-ms-thumb {
   backdrop-filter: blur(0.25rem);
   -webkit-backdrop-filter: blur(0.25rem);
   opacity: 0;
-  transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
+  transition: all 0.25s ease-in-out;
   white-space: nowrap;
   z-index: 9999;
   pointer-events: none;
@@ -618,7 +655,7 @@ input[type="range"]::-ms-thumb {
   align-items: center;
   justify-content: center;
   z-index: 99999;
-  transition: all 0.25s;
+  transition: all 0.25s ease-in-out;
 }
 .qrCard {
   background-color: rgba(255, 255, 255, 0.5);

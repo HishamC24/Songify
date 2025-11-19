@@ -108,6 +108,9 @@ let currentSongJson = {};
 let selectedPlaylistIndex = 0;
 let playlistDropdownExpanded = false;
 let deferredPrompt = null;
+let menuPlayingIndex = -1;
+let menuSongList = [];
+let menuPlayingFromMenu = false;
 
 // ==============================
 // ===== UTILITY FUNCTIONS ======
@@ -261,10 +264,13 @@ function refreshAudioPlayerElements() {
 if (pauseBtn) pauseBtn.style.display = "none";
 function setupMainAudio(previewUrl) {
     if (mainAudio) mainAudio.pause();
+    menuPlayingFromMenu = false;
+    menuPlayingIndex = -1;
     mainPreviewUrl = previewUrl || null;
     if (!mainPreviewUrl) {
         mainAudio = null;
         resetAudio();
+        updateMenuPlayPauseIndicators();
         return;
     }
     mainAudio = new Audio(mainPreviewUrl);
@@ -324,6 +330,46 @@ function setupAudioEndedHandler(audio) {
             console.warn("⚠️ Listen% tracking error:", err);
         }
         listenStartTime = null;
+
+        // Auto-play next song if playing from menu
+        if (menuPlayingFromMenu && menuSongList.length > 0) {
+            const nextIndex = menuPlayingIndex + 1;
+            if (nextIndex < menuSongList.length) {
+                // Get the next song from the list
+                const nextSong = menuSongList[nextIndex];
+                if (nextSong) {
+                    // Fetch the song data and play it
+                    const query = nextSong.title || nextSong.name || "";
+                    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}`;
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            const results = (data.results || []).filter((item) => item.kind === "song");
+                            if (results.length > 0) {
+                                const nextSongData = results[0];
+                                // Find the menu item for this song by matching dataset.songIndex
+                                const menuItems = document.querySelectorAll(".menuItem");
+                                for (let i = 0; i < menuItems.length; i++) {
+                                    const imgContainer = menuItems[i].querySelector(".menuItemImageContainer");
+                                    if (imgContainer && parseInt(imgContainer.dataset.songIndex || "-1", 10) === nextIndex) {
+                                        const nextOverlay = menuItems[i].querySelector(".menuItemPlayPauseOverlay");
+                                        if (nextSongData.previewUrl) {
+                                            handleMenuPlayPause(nextIndex, nextSongData, imgContainer, nextOverlay);
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        })
+                        .catch(err => {
+                            console.warn("Failed to fetch next song:", err);
+                        });
+                    return;
+                }
+            }
+        }
+
+        // Default behavior for card view
         if (audio.currentTime !== 0) audio.currentTime = 0;
         if (!audio.paused) {
             audio.play();
@@ -338,11 +384,14 @@ function setupAudioPlayerListeners() {
     if (playBtn && !playBtn._listenerAttached) {
         playBtn.addEventListener("click", () => {
             if (!mainAudio || !mainPreviewUrl) return;
+            menuPlayingFromMenu = false;
+            menuPlayingIndex = -1;
             mainAudio.play();
             listenStartTime = Date.now();
             playBtn.style.display = "none";
             pauseBtn.style.display = "inline";
             mainCardPlaying = true;
+            updateMenuPlayPauseIndicators();
         });
         playBtn._listenerAttached = true;
     }
@@ -353,6 +402,7 @@ function setupAudioPlayerListeners() {
             playBtn.style.display = "inline";
             pauseBtn.style.display = "none";
             mainCardPlaying = false;
+            updateMenuPlayPauseIndicators();
         });
         pauseBtn._listenerAttached = true;
     }
@@ -572,7 +622,7 @@ document.getElementById("like-btn").addEventListener("click", () => {
         let popup = iconLocation.querySelector(`.${type}Popup`);
         if (!popup) return null;
         popup.style.opacity = opacity;
-        popup.style.transition = `opacity 0.08s`;
+        popup.style.transition = `opacity 0.1s`;
         popup.style.pointerEvents = "none";
         popup.style.removeProperty("position");
         popup.style.removeProperty("top");
@@ -937,6 +987,104 @@ cardViewMenuButton.addEventListener("click", () => {
 })();
 
 // ==============================
+// ===== MENU PLAY/PAUSE =========
+// ==============================
+function updateMenuPlayPauseIndicators() {
+    const allOverlays = document.querySelectorAll(".menuItemPlayPauseOverlay");
+    allOverlays.forEach((overlay) => {
+        const container = overlay.parentElement;
+        const songIndex = parseInt(container.dataset.songIndex || "-1", 10);
+        if (menuPlayingFromMenu && menuPlayingIndex === songIndex && mainAudio && !mainAudio.paused) {
+            overlay.style.display = "flex";
+            overlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="menuPauseIcon"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" /><path d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" /></svg>`;
+        } else if (menuPlayingFromMenu && menuPlayingIndex === songIndex) {
+            overlay.style.display = "flex";
+            overlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="menuPlayIcon"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" /></svg>`;
+        } else {
+            overlay.style.display = "none";
+        }
+    });
+}
+
+function handleMenuPlayPause(songIndex, songData, imgContainer, playPauseOverlay) {
+    const previewUrl = songData.previewUrl;
+    if (!previewUrl) return;
+
+    // If clicking the same song that's playing, toggle play/pause
+    if (menuPlayingFromMenu && menuPlayingIndex === songIndex && mainAudio) {
+        if (mainAudio.paused) {
+            mainAudio.play();
+            listenStartTime = Date.now();
+            playPauseOverlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="menuPauseIcon"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" /><path d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" /></svg>`;
+            playPauseOverlay.style.display = "flex";
+        } else {
+            mainAudio.pause();
+            playPauseOverlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="menuPlayIcon"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" /></svg>`;
+            playPauseOverlay.style.display = "flex";
+        }
+        return;
+    }
+
+    // Stop any current playback
+    if (mainAudio) {
+        mainAudio.pause();
+        mainAudio = null;
+    }
+
+    // Set up new audio
+    menuPlayingFromMenu = true;
+    menuPlayingIndex = songIndex;
+    mainPreviewUrl = previewUrl;
+    mainAudio = new Audio(previewUrl);
+
+    // Set volume
+    const localVolumeSlider = document.querySelector("#mainCard .volume");
+    if (localVolumeSlider) {
+        let initialValue = Number(localVolumeSlider.value);
+        if (isNaN(initialValue)) initialValue = 50;
+        mainAudio.volume = Math.max(0, Math.min(1, initialValue / 100));
+    } else {
+        mainAudio.volume = 0.5;
+    }
+
+    // Store song data for tracking
+    window.currentSongObject = songData;
+    currentSongJson = songData;
+
+    // Set up audio handlers
+    setupAudioProgressTracking(mainAudio);
+    setupAudioEndedHandler(mainAudio);
+
+    // Add play/pause listeners to update indicators
+    mainAudio.addEventListener("play", () => {
+        updateMenuPlayPauseIndicators();
+    });
+    mainAudio.addEventListener("pause", () => {
+        updateMenuPlayPauseIndicators();
+    });
+
+    // Play the audio
+    mainAudio.play().then(() => {
+        listenStartTime = Date.now();
+
+        // Update UI
+        updateMenuPlayPauseIndicators();
+        playPauseOverlay.style.display = "flex";
+        playPauseOverlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="menuPauseIcon"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" /><path d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" /></svg>`;
+
+        // Update main card play/pause buttons if visible
+        const playBtn = document.querySelector("#mainCard .play");
+        const pauseBtn = document.querySelector("#mainCard .pause");
+        if (playBtn && pauseBtn) {
+            playBtn.style.display = "none";
+            pauseBtn.style.display = "inline";
+        }
+    }).catch(err => {
+        console.warn("Failed to play audio:", err);
+    });
+}
+
+// ==============================
 // ===== SEARCH FUNCTIONALITY ===
 // ==============================
 (function setupSearchMenuHandlers() {
@@ -971,6 +1119,9 @@ cardViewMenuButton.addEventListener("click", () => {
         if (!playlistObj || !Array.isArray(playlistObj.songList)) return;
         let songList = playlistObj.songList;
 
+        // Store the song list for auto-play next functionality
+        menuSongList = songList;
+
         if (typeof searchQuery === "string" && searchQuery.length > 0) {
             const rawQ = searchQuery.trim();
             const q = normalizeSearchString(rawQ);
@@ -1004,7 +1155,7 @@ cardViewMenuButton.addEventListener("click", () => {
             }
         });
 
-        const renderSongMenuItem = async (song) => {
+        const renderSongMenuItem = async (song, index) => {
             const query = song.title || song.name || "";
             if (window.debug) console.log(song);
             const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}`;
@@ -1021,12 +1172,36 @@ cardViewMenuButton.addEventListener("click", () => {
             menuItem.className = "menuItem";
             const part1 = document.createElement("div");
             part1.className = "part1";
+            const imgContainer = document.createElement("div");
+            imgContainer.className = "menuItemImageContainer";
             const img = document.createElement("img");
             img.className = "menuItemImage";
             img.src = songData.artworkUrl100 ? songData.artworkUrl100.replace("100x100", "1500x1500") : (song.image || "");
             img.alt = songData.trackName && songData.artistName
                 ? `${songData.trackName} by ${songData.artistName}`
                 : (query ? query : "Unknown");
+
+            // Add play/pause overlay
+            const playPauseOverlay = document.createElement("div");
+            playPauseOverlay.className = "menuItemPlayPauseOverlay";
+            const playIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="menuPlayIcon"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" /></svg>`;
+            const pauseIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="menuPauseIcon"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" /><path d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z" /></svg>`;
+            playPauseOverlay.innerHTML = playIcon;
+            playPauseOverlay.style.display = "none";
+
+            imgContainer.appendChild(img);
+            imgContainer.appendChild(playPauseOverlay);
+
+            // Store song index and data for click handler
+            imgContainer.dataset.songIndex = index;
+            imgContainer.dataset.previewUrl = songData.previewUrl || "";
+            imgContainer.dataset.songData = JSON.stringify(songData);
+
+            // Add click handler to play/pause
+            imgContainer.addEventListener("click", () => {
+                handleMenuPlayPause(index, songData, imgContainer, playPauseOverlay);
+            });
+
             const songInfo = document.createElement("p");
             songInfo.className = "songInfo";
             songInfo.innerHTML = `
@@ -1037,7 +1212,7 @@ cardViewMenuButton.addEventListener("click", () => {
                     : (song.release || "")
                 }
             `;
-            part1.appendChild(img); part1.appendChild(songInfo);
+            part1.appendChild(imgContainer); part1.appendChild(songInfo);
             const part2 = document.createElement("div");
             part2.className = "part2";
             const title = document.createElement("p");
@@ -1086,7 +1261,7 @@ cardViewMenuButton.addEventListener("click", () => {
 
         let firstMenuItemAdded = false;
         for (let i = 0; i < songList.length; ++i) {
-            const menuItem = await renderSongMenuItem(songList[i]);
+            const menuItem = await renderSongMenuItem(songList[i], i);
             if (menuItem) {
                 if (firstMenuItemAdded) {
                     listItemsDiv.appendChild(document.createElement("hr"));
@@ -1095,6 +1270,9 @@ cardViewMenuButton.addEventListener("click", () => {
                 firstMenuItemAdded = true;
             }
         }
+
+        // Update play/pause indicators after rendering
+        updateMenuPlayPauseIndicators();
     }
 
     document.addEventListener("click", (e) => {
