@@ -1061,6 +1061,9 @@ cardViewMenuButton.addEventListener("click", () => {
             qrCodeDiv.className = "qrCode";
             qrCodeDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 17l0 .01" /><path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M7 7l0 .01" /><path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M17 7l0 .01" /><path d="M14 14l3 0" /><path d="M20 14l0 .01" /><path d="M14 14l0 3" /><path d="M14 20l3 0" /><path d="M17 17l3 0" /><path d="M20 17l0 3" /></svg>`;
             part3.appendChild(qrCodeDiv);
+            qrCodeDiv.dataset.link = songData.trackViewUrl;
+
+
             menuItem.appendChild(part1); menuItem.appendChild(part2); menuItem.appendChild(part3);
             return menuItem;
         };
@@ -1077,6 +1080,33 @@ cardViewMenuButton.addEventListener("click", () => {
             }
         }
     }
+
+document.addEventListener("click", (e) => {
+    const qrBtn = e.target.closest(".qrCode");
+    if (!qrBtn) return;
+
+    const link = qrBtn.dataset.link;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(link)}`;
+
+    const overlay = document.createElement("div");
+    overlay.className = "qrOverlay";
+
+    overlay.innerHTML = `
+        <div class="qrCard">
+            <img class="qrImage" src="${qrUrl}" alt="QR Code">
+            <button class="qrClose">Close</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector(".qrClose").addEventListener("click", () => {
+        overlay.remove();
+    });
+});
+
+
+
 
     if (searchInput) {
         searchInput.addEventListener("input", async e => {
@@ -1137,6 +1167,37 @@ function applyTitleMarqueeIfNeeded(el) {
         };
     });
 }
+
+// ====================================
+// ======= QR CODE GENERATOR =========
+// ====================================
+function showQRPopup(link) {
+    const overlay = document.createElement("div");
+    overlay.className = "qrOverlay";
+
+    const popup = document.createElement("div");
+    popup.className = "qrPopup";
+
+    popup.innerHTML = `
+        <img class="qrImage" 
+             src="https://chart.googleapis.com/chart?cht=qr&chs=500x500&chl=${encodeURIComponent(link)}" 
+             alt="QR Code">
+
+        <p class="qrText">Scan to open</p>
+        <button class="qrClose">Close</button>
+    `;
+
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    // Close when clicking button or background
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay || e.target.classList.contains("qrClose")) {
+            overlay.remove();
+        }
+    });
+}
+
 
 // ====================================
 // ======= iOS RANGE HANDLING =========
