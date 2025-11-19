@@ -244,6 +244,7 @@ let pauseBtn = document.querySelector("#mainCard .pause");
 let seekbar = document.querySelector("#mainCard .seekbar");
 let currentTimeLabel = document.querySelector("#mainCard .currentTimeLabel");
 let durationLabel = document.querySelector("#mainCard .durationLabel");
+let volumeSlider = document.querySelector("#mainCard .volume");
 
 function refreshAudioPlayerElements() {
     playBtn = document.querySelector("#mainCard .play");
@@ -251,6 +252,7 @@ function refreshAudioPlayerElements() {
     seekbar = document.querySelector("#mainCard .seekbar");
     currentTimeLabel = document.querySelector("#mainCard .currentTimeLabel");
     durationLabel = document.querySelector("#mainCard .durationLabel");
+    volumeSlider = document.querySelector("#mainCard .volume");
 }
 if (pauseBtn) pauseBtn.style.display = "none";
 function setupMainAudio(previewUrl) {
@@ -262,6 +264,17 @@ function setupMainAudio(previewUrl) {
         return;
     }
     mainAudio = new Audio(mainPreviewUrl);
+
+    // === VOLUME: load from slider if present, otherwise default to 0.5
+    const localVolumeSlider = document.querySelector("#mainCard .volume");
+    if (localVolumeSlider) {
+        let initialValue = Number(localVolumeSlider.value);
+        if (isNaN(initialValue)) initialValue = 50;
+        mainAudio.volume = Math.max(0, Math.min(1, initialValue / 100));
+    } else {
+        mainAudio.volume = 0.5;
+    }
+
     setupAudioProgressTracking(mainAudio);
     setupAudioEndedHandler(mainAudio);
     resetAudio();
@@ -276,6 +289,10 @@ function resetAudio() {
     }
     if (currentTimeLabel) currentTimeLabel.textContent = "00:00";
     if (durationLabel) durationLabel.textContent = "00:30";
+    // volume UI & mainAudio volume sync (for new songs)
+    if (volumeSlider && typeof mainAudio?.volume === "number") {
+        volumeSlider.value = Math.round((mainAudio.volume ?? 0.5) * 100);
+    }
 }
 function setupAudioProgressTracking(audio) {
     audio.addEventListener("loadedmetadata", () => {
@@ -347,6 +364,24 @@ function setupAudioPlayerListeners() {
             mainAudio.currentTime = seekbar.value;
         });
         seekbar._listenerAttached = true;
+    }
+
+    // ====== VOLUME SLIDER SUPPORT ======
+    if (volumeSlider && !volumeSlider._listenerAttached) {
+        volumeSlider.addEventListener("input", () => {
+            if (!mainAudio) return;
+            const volumeValue = Math.max(0, Math.min(1, volumeSlider.value / 100));
+            mainAudio.volume = volumeValue;
+        });
+
+        // To support keyboard + min/max for slider, also update on change
+        volumeSlider.addEventListener("change", () => {
+            if (!mainAudio) return;
+            const volumeValue = Math.max(0, Math.min(1, volumeSlider.value / 100));
+            mainAudio.volume = volumeValue;
+        });
+
+        volumeSlider._listenerAttached = true;
     }
 }
 setupAudioPlayerListeners();
