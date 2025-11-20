@@ -11,12 +11,12 @@ const clamp = (v, min = 0, max = 1) => Math.min(Math.max(v, min), max);
 const savedProfile = localStorage.getItem("songify_tasteProfile");
 
 let tasteProfile = {
-  genreIdentity: Array(11).fill(0.500),
-  artistVariety: 0.500,
-  eraPreference: 0.500,
-  explicitnessTolerance: 0.500,
-  popularityBias: 0.500,
-  energyPreference: 0.500,
+    genreIdentity: Array(11).fill(0.500),
+    artistVariety: 0.500,
+    eraPreference: 0.500,
+    explicitnessTolerance: 0.500,
+    popularityBias: 0.500,
+    energyPreference: 0.500,
 };
 
 if (debug) console.log("🎵 Created new default taste profile.", tasteProfile);
@@ -182,26 +182,50 @@ export function updateTasteProfile(song, feedback = {}) {
     const mult = typeof sigValue === "number" ? sigValue / 100 : 1;
 
 // --- update single genre weight only ---
-if (gIndex !== -1) { // make sure the song’s genre was recognized
-  const direction = feedback.like ? 1 : feedback.dislike ? -1 : 0;
+// --- update single genre weight (like, dislike, listen, replay, share, favorite) ---
+if (gIndex !== -1) {
+    let delta;
 
-  // movement size
-  const delta = lr * w.genre * direction;
+    if (feedback.like) {
+        // strong positive push
+        delta = lr * w.genre * 1;
 
-  // apply only to the one matching genre
-  tasteProfile.genreIdentity[gIndex] = clamp(
-    logGrow(tasteProfile.genreIdentity[gIndex], delta),
-    0,
-    1
-  );
+    } else if (feedback.dislike) {
+        // strong negative push
+        delta = lr * w.genre * -1;
 
-  // optional rounding for visibility
-  tasteProfile.genreIdentity[gIndex] = Number(tasteProfile.genreIdentity[gIndex].toFixed(3));
+    } else if (feedback.listen) {
+        // listenPercent controls strength
+        const p = typeof feedback.listenPercent === "number"
+            ? feedback.listenPercent / 100
+            : 1;
 
-  if (debug) {
-    console.log(`🎚️ Genre [${genres[gIndex]}] adjusted by ${delta.toFixed(4)} → ${tasteProfile.genreIdentity[gIndex]}`);
-  }
+        // gentle drift weighted by w.genre
+        delta = lr * w.genre * p;
+
+    } else {
+        // share, replay, favorite — already weighted in signalWeights
+        delta = lr * w.genre;
+    }
+
+    tasteProfile.genreIdentity[gIndex] = clamp(
+        logGrow(tasteProfile.genreIdentity[gIndex], delta),
+        0,
+        1
+    );
+
+    tasteProfile.genreIdentity[gIndex] = Number(
+        tasteProfile.genreIdentity[gIndex].toFixed(3)
+    );
+
+    if (debug) {
+        console.log(
+            `🎚️ Genre [${genres[gIndex]}] adjusted by ${delta.toFixed(4)} → ${tasteProfile.genreIdentity[gIndex]}`
+        );
+    }
 }
+
+
 
 
   // --- Update scalar components safely ---

@@ -318,12 +318,18 @@ function setupAudioProgressTracking(audio) {
 }
 function setupAudioEndedHandler(audio) {
     audio.addEventListener("ended", () => {
+        window._playedToEnd = true;
+
         try {
             if (window.currentSongObject && listenStartTime) {
                 const totalDuration = audio.duration || 30;
                 const elapsed = (Date.now() - listenStartTime) / 1000;
                 const listenPercent = Math.min((elapsed / totalDuration) * 100, 100);
-                updateTasteProfile(window.currentSongObject, { listen: true, listenPercent });
+                
+                updateTasteProfile(window.currentSongObject, { 
+                    listen: true, 
+                    listenPercent });
+
                 if (debug) console.log(`🎧 Logged listenPercent: ${listenPercent.toFixed(1)}%`);
             }
         } catch (err) {
@@ -341,6 +347,7 @@ function setupAudioEndedHandler(audio) {
                     // Fetch the song data and play it
                     const query = nextSong.title || nextSong.name || "";
                     const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}`;
+                    
                     fetch(url)
                         .then(response => response.json())
                         .then(data => {
@@ -349,6 +356,7 @@ function setupAudioEndedHandler(audio) {
                                 const nextSongData = results[0];
                                 // Find the menu item for this song by matching dataset.songIndex
                                 const menuItems = document.querySelectorAll(".menuItem");
+                                
                                 for (let i = 0; i < menuItems.length; i++) {
                                     const imgContainer = menuItems[i].querySelector(".menuItemImageContainer");
                                     if (imgContainer && parseInt(imgContainer.dataset.songIndex || "-1", 10) === nextIndex) {
@@ -369,15 +377,15 @@ function setupAudioEndedHandler(audio) {
             }
         }
 
+        // Detect replay ONLY for card auto-loop
+        if (mainCardPlaying && mainAudio === audio) {
+            updateTasteProfile(window.currentSongObject, { replay: true });
+            if (debug) console.log("🔁 Replay detected via auto-loop!");
+        }
+
         // Default behavior for card view
         if (audio.currentTime !== 0) audio.currentTime = 0;
-        if (!audio.paused) {
-            audio.play();
-        } else {
-            if (mainCardPlaying && mainAudio === audio) {
-                audio.play();
-            }
-        }
+        audio.play();
     });
 }
 function setupAudioPlayerListeners() {
@@ -386,6 +394,8 @@ function setupAudioPlayerListeners() {
             if (!mainAudio || !mainPreviewUrl) return;
             menuPlayingFromMenu = false;
             menuPlayingIndex = -1;
+
+            
             mainAudio.play();
             listenStartTime = Date.now();
             playBtn.style.display = "none";
@@ -453,6 +463,8 @@ function logListen() {
     listenStartTime = null;
 }
 async function handleSongSwitch(onSongAction) {
+    window._playedToEnd = false;
+
     if (typeof onSongAction === "function") onSongAction(currentSongJson);
     document.querySelectorAll(".iconPopup").forEach(popup => {
         popup.style.opacity = "0";
@@ -699,14 +711,21 @@ document.getElementById("like-btn").addEventListener("click", () => {
                 const handler = () => {
                     mainCard.removeEventListener('transitionend', handler);
                     clearAllPopups();
+                   
                     handleSongSwitch(() => {
-                        logListen();
-                        if (typeof window.currentSongObject === "object" && window.currentSongObject) {
-                            try {
-                                window.currentSongObject.favorited = true;
-                            } catch { }
-                        }
-                        likeSong({ ...window.currentSongObject, favorited: true });
+                            const song = { ...window.currentSongObject };  // freeze snapshot
+
+                            // 1️ log listen% drift
+                            logListen(song);
+
+                            // 2️ strongest reinforcement
+                            updateTasteProfile(song, { favorite: true });
+
+                            // 3️ mark it as favorited in UI
+                            song.favorited = true;
+
+                            // 4️ treat as like in the system
+                            likeSong(song);
                     });
                 };
                 mainCard.addEventListener('transitionend', handler);
@@ -1149,6 +1168,12 @@ function handleMenuPlayPause(songIndex, songData, imgContainer, playPauseOverlay
                 try {
                     await navigator.clipboard.writeText(link);
                     showCopyToast("Link copied!");
+
+                    // UPDATE TASTE VECTOR ON SHARE
+                    if (window.currentSongObject) {
+                        updateTasteProfile(window.currentSongObject, { share: true });
+                    }
+
                 } catch (err) {
                     console.error("Failed to copy:", err);
                 }
@@ -1230,12 +1255,18 @@ function handleMenuPlayPause(songIndex, songData, imgContainer, playPauseOverlay
             const UNSTARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 3l18 18" /><path d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917" /></svg>`;
             const STARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"/></svg>`;
             starDiv.innerHTML = song.favorited ? STARRED_SVG : UNSTARRED_SVG;
+            
             starDiv.addEventListener("click", (e) => {
                 e.stopPropagation();
                 song.favorited = !song.favorited;
                 if (song.favorited) {
                     starDiv.classList.add("starred");
                     starDiv.innerHTML = STARRED_SVG;
+
+                    // strongest vector reinforcement
+                    const songData = JSON.parse(imgContainer.dataset.songData);
+                    updateTasteProfile(songData, { favorite: true });
+
                 } else {
                     starDiv.classList.remove("starred");
                     starDiv.innerHTML = UNSTARRED_SVG;
@@ -1279,6 +1310,12 @@ function handleMenuPlayPause(songIndex, songData, imgContainer, playPauseOverlay
         const qrBtn = e.target.closest(".qrCode");
         if (!qrBtn) return;
         const link = qrBtn.dataset.link;
+
+        // UPDATE TASTE VECTOR FOR QR SHARE
+        if (window.currentSongObject) {
+            updateTasteProfile(window.currentSongObject, { share: true });
+        }
+
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(link)}`;
         const overlay = document.createElement("div");
         overlay.className = "qrOverlay";
