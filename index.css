@@ -41,11 +41,12 @@
 }
 
 * {
-  font-family: "SF Pro Display";
-  font-weight: 300;
-  color: #000;
   padding: 0;
   margin: 0;
+  font-family: "SF Pro Display";
+  -webkit-tap-highlight-color: transparent;
+  font-weight: 300;
+  color: #000;
   user-select: none;
   -webkit-user-select: none;
   -ms-user-select: none;
@@ -276,8 +277,7 @@ input[type="range"]::-moz-range-thumb {
 ================================================================ */
 /* Install Button */
 #install-btn {
-  display: none;
-  position: relative;
+  position: fixed;
   margin: calc(8 / var(--simWidth) * 100vw) auto 0;
   top: 0;
   padding: calc(8 / var(--simWidth) * 100vw) calc(12 / var(--simWidth) * 100vw);

@@ -8,7 +8,6 @@ import { debug } from "./globalSettings.js";
 // ==============================
 // ======= CONSTANTS ============
 // ==============================
-const installBtn = document.getElementById("install-btn");
 const cardViewMenuButton = document.getElementById('cardViewMenuButton');
 const menuToggleElements = document.querySelectorAll('.menuToggle');
 
@@ -146,39 +145,6 @@ function showCopyToast(message = "Link copied") {
         toast.addEventListener("transitionend", () => toast.remove());
     }, 1600);
 }
-
-// ==============================
-// ==== PWA INSTALL LOGIC  ======
-// ==============================
-function hideInstallButton() { installBtn.style.display = "none"; }
-function showInstallButton() { installBtn.style.display = ""; }
-function checkInstallState() {
-    const isStandalone =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        navigator.standalone === true ||
-        document.referrer.includes("android-app://");
-    if (isStandalone) hideInstallButton();
-}
-(function initPWA() {
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
-    checkInstallState();
-    window.addEventListener("beforeinstallprompt", (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        showInstallButton();
-    });
-    installBtn.addEventListener("click", async () => {
-        if (!deferredPrompt) return;
-        hideInstallButton();
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-    });
-    window.addEventListener("appinstalled", () => {
-        hideInstallButton();
-        deferredPrompt = null;
-    });
-})();
 
 // ==============================
 // ==== SONG FETCHING / LOADING =
@@ -325,10 +291,11 @@ function setupAudioEndedHandler(audio) {
                 const totalDuration = audio.duration || 30;
                 const elapsed = (Date.now() - listenStartTime) / 1000;
                 const listenPercent = Math.min((elapsed / totalDuration) * 100, 100);
-                
-                updateTasteProfile(window.currentSongObject, { 
-                    listen: true, 
-                    listenPercent });
+
+                updateTasteProfile(window.currentSongObject, {
+                    listen: true,
+                    listenPercent
+                });
 
                 if (debug) console.log(`🎧 Logged listenPercent: ${listenPercent.toFixed(1)}%`);
             }
@@ -347,7 +314,7 @@ function setupAudioEndedHandler(audio) {
                     // Fetch the song data and play it
                     const query = nextSong.title || nextSong.name || "";
                     const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}`;
-                    
+
                     fetch(url)
                         .then(response => response.json())
                         .then(data => {
@@ -356,7 +323,7 @@ function setupAudioEndedHandler(audio) {
                                 const nextSongData = results[0];
                                 // Find the menu item for this song by matching dataset.songIndex
                                 const menuItems = document.querySelectorAll(".menuItem");
-                                
+
                                 for (let i = 0; i < menuItems.length; i++) {
                                     const imgContainer = menuItems[i].querySelector(".menuItemImageContainer");
                                     if (imgContainer && parseInt(imgContainer.dataset.songIndex || "-1", 10) === nextIndex) {
@@ -395,7 +362,7 @@ function setupAudioPlayerListeners() {
             menuPlayingFromMenu = false;
             menuPlayingIndex = -1;
 
-            
+
             mainAudio.play();
             listenStartTime = Date.now();
             playBtn.style.display = "none";
@@ -711,21 +678,21 @@ document.getElementById("like-btn").addEventListener("click", () => {
                 const handler = () => {
                     mainCard.removeEventListener('transitionend', handler);
                     clearAllPopups();
-                   
+
                     handleSongSwitch(() => {
-                            const song = { ...window.currentSongObject };  // freeze snapshot
+                        const song = { ...window.currentSongObject };  // freeze snapshot
 
-                            // 1️ log listen% drift
-                            logListen(song);
+                        // 1️ log listen% drift
+                        logListen(song);
 
-                            // 2️ strongest reinforcement
-                            updateTasteProfile(song, { favorite: true });
+                        // 2️ strongest reinforcement
+                        updateTasteProfile(song, { favorite: true });
 
-                            // 3️ mark it as favorited in UI
-                            song.favorited = true;
+                        // 3️ mark it as favorited in UI
+                        song.favorited = true;
 
-                            // 4️ treat as like in the system
-                            likeSong(song);
+                        // 4️ treat as like in the system
+                        likeSong(song);
                     });
                 };
                 mainCard.addEventListener('transitionend', handler);
@@ -1255,7 +1222,7 @@ function handleMenuPlayPause(songIndex, songData, imgContainer, playPauseOverlay
             const UNSTARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 3l18 18" /><path d="M10.012 6.016l1.981 -4.014l3.086 6.253l6.9 1l-4.421 4.304m.012 4.01l.588 3.426l-6.158 -3.245l-6.172 3.245l1.179 -6.873l-5 -4.867l6.327 -.917" /></svg>`;
             const STARRED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"/></svg>`;
             starDiv.innerHTML = song.favorited ? STARRED_SVG : UNSTARRED_SVG;
-            
+
             starDiv.addEventListener("click", (e) => {
                 e.stopPropagation();
                 song.favorited = !song.favorited;
