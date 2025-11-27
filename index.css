@@ -583,40 +583,74 @@ input[type="range"]::-ms-thumb {
   border-radius: calc(2 / var(--simWidth) * 100vw);
 }
 
+/* LIST BOTTOM CONTAINER */
 #listBottom {
   position: fixed;
   bottom: calc(32 / var(--simWidth) * 100vw);
   left: calc(32 / var(--simWidth) * 100vw);
   width: calc((var(--simWidth) - 64) / var(--simWidth) * 100vw);
+
   display: flex;
+  flex-direction: row;
+  align-items: center;
   gap: calc(8 / var(--simWidth) * 100vw);
+
+  /* SAFARI FIX */
+  min-width: 0;
+  z-index: 1000;
 }
 
+/* SEARCH INPUT — SAFARI FIX APPLIED */
 #menuTextInput {
+  flex: 1 1 auto;
+  width: 0;        /* ← REQUIRED by iOS Safari */
+  min-width: 0;    /* ← REQUIRED by iOS Safari */
+
   background-color: rgba(255, 255, 255, 0.5);
-  width: auto;
-  flex: 1 1 0;
   height: calc(48 / var(--simWidth) * 100vw);
   border-radius: calc(24 / var(--simWidth) * 100vw);
+  padding-left: calc(24 / var(--simWidth) * 100vw);
+
+  border: none;
+  font-size: calc(16 / var(--simWidth) * 100vw);
+  color: #000;
+
   backdrop-filter: blur(0.25rem);
   -webkit-backdrop-filter: blur(0.25rem);
-  padding-left: calc(24 / var(--simWidth) * 100vw);
-  border: none;
-  color: #000000;
-  font-size: calc(16 / var(--simWidth) * 100vw);
 }
-#menuViewMenuButton > svg {
-  /* Welcome to the world of Optical Balance! :) - Hisham C. */
-  padding-right: calc(1 / var(--simWidth) * 100vw);
-}
-#menuViewMenuButton,
-#clearSearchButton {
+
+/* BUTTONS (clear + back) */
+#clearSearchButton,
+#menuViewMenuButton {
+  flex-shrink: 0; /* ← prevents shrinking offscreen */
+
+  width: calc(48 / var(--simWidth) * 100vw);
+  height: calc(48 / var(--simWidth) * 100vw);
+
+  border-radius: calc(24 / var(--simWidth) * 100vw);
   background-color: rgba(255, 255, 255, 0.5);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  backdrop-filter: blur(0.25rem);
+  -webkit-backdrop-filter: blur(0.25rem);
 }
-#menuViewMenuButton:active,
-#clearSearchButton:active {
+
+/* BUTTON ICONS */
+#clearSearchButton > svg,
+#menuViewMenuButton > svg {
+  width: calc(24 / var(--simWidth) * 100vw);
+  height: calc(24 / var(--simWidth) * 100vw);
+}
+
+/* ACTIVE STATES */
+#clearSearchButton:active,
+#menuViewMenuButton:active {
   background-color: rgba(255, 255, 255, 0.75);
 }
+
 
 /* ================================================================
    SHARE LINK COPY MESSAGE
