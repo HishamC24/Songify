@@ -3,7 +3,18 @@
  */
 import { debug } from "../globalSettings.js";
 
-const OPENROUTER_API_KEY = ""; // ⬅️ your key here
+
+//changed api key to be detected in url for demo
+
+const OPENROUTER_API_KEY = (() => {
+  const params = new URLSearchParams(window.location.search);
+  const keyFromURL = params.get("apiKey");
+  if (keyFromURL) localStorage.setItem("OPENROUTER_API_KEY", keyFromURL);
+  return keyFromURL || localStorage.getItem("OPENROUTER_API_KEY") || "";
+})();
+
+
+
 const RECENT_HISTORY_LIMIT = 20;
 let recentSongs = [];
 let cachedMCP = null;
@@ -87,6 +98,8 @@ function parseResponse(text) {
   }
 }
 
+/// models "meta-llama/llama-3.3-70b-instruct:free",
+
 // ======== Main recommendSong() (returns array of 5) ========
 export async function recommendSong(vector = tasteVector) {
   const model = "meta-llama/llama-3.3-70b-instruct:free";
@@ -149,3 +162,44 @@ export async function recommendSong(vector = tasteVector) {
     return fallback;
   }
 }
+
+// ====================================
+// ========= LLM LOADED POPUP =========
+// ====================================
+
+function showLLMToast(message) {
+  const toast = document.getElementById("llmToast");
+  toast.textContent = message;
+
+  // Show
+  toast.classList.add("show");
+
+  // Hide after 2 seconds
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2000);
+}
+
+export async function testLLMConnection() {
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3.3-70b-instruct:free",
+        max_tokens: 1,
+        messages: [{ role: "user", content: "hi" }]
+      })
+    });
+
+    if (!response.ok) throw new Error();
+
+    showLLMToast("Connected to LLM ✔️", true);
+  } catch (e) {
+    showLLMToast("Failed to connect to LLM ❌", false);
+  }
+}
+

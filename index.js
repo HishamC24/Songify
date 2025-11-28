@@ -5,6 +5,13 @@ import { updateTasteProfile } from "./backend/songify_logic.js";
 import { songs, requestSong, dislikeSong, likeSong, requestSongList, requestPlaylistList } from "./backend.js";
 import { debug } from "./globalSettings.js";
 
+import { testLLMConnection } from "./backend/api.js";
+
+window.addEventListener("load", () => {
+  testLLMConnection();
+});
+
+
 // ==============================
 // ======= CONSTANTS ============
 // ==============================
@@ -1455,3 +1462,5 @@ const rerunApplySquircles = () => {
     attributes: true,
     attributeFilter: ["style", "class"]
 });
+
+
